@@ -79,13 +79,10 @@ STATUS.md                      detailed evidence-based status log
 
 ## Reference material included
 
-`reference/` contains small extracted files from the exact stock ROM the user
-flashed (`lisa_stock.tgz`, HyperOS 2.0.8.0.UKOMIXM):
-* `vbmeta.img` — stock AVB metadata (8 KB)
-* `dtb.img` — stock DTB blob (4.1 MB)
-* `prog_firehose_lite.elf` — stock EDL firehose loader (929 KB)
-* `stock-boot-header.txt` — parsed header bytes showing header version 3
-* `stock-rom-info.md` — full stock ROM facts
+`reference/` contains `stock-boot-header.txt` and `stock-rom-info.md`.
+The extracted stock `vbmeta.img`, `dtb.img` and `prog_firehose_lite.elf` are
+kept **locally only** (gitignored) because this machine cannot push large
+blobs reliably; extract them again from `lisa_stock.tgz` when needed.
 
 The full 6.1 GB stock ROM archive is at
 `/home/abhi/Desktop/lisa_stock/lisa_stock.tgz` on the original machine; it is
