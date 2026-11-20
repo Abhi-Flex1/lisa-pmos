@@ -1,0 +1,17 @@
+# Build outputs and cache
+output/
+.pmos_cache/
+.pmos_keys/
+pmaports/
+work/
+__pycache__/
+*.pyc
+*.rsa
+*.rsa.pub
+.SIGN.*
+
+# OS generated files
+.DS_Store
+*.swp
+*~
+reference/*.img

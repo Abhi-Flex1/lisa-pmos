@@ -1,0 +1,22 @@
+[15:15:04] [93mWARNING:[0m --no-fde is deprecated, as it is now the default.[0m
+[15:15:04] [92m*** (1/4) PREPARE NATIVE CHROOT ***[0m
+[15:15:05] (native) install cryptsetup util-linux parted[0m
+[15:15:06] [92m*** (2/4) CREATE DEVICE ROOTFS ("xiaomi-lisa") ***[0m
+[15:15:12] (rootfs_xiaomi-lisa) install postmarketos-base-systemd[0m
+[15:15:13] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:15:15] (rootfs_xiaomi-lisa) install postmarketos-base device-xiaomi-lisa postmarketos-ui-plasma-mobile android-tools plasma-camera libcamera postmarketos-base-nofde ttyescape xdg-user-dirs discover dolphin postmarketos-artwork-wallpapers plasma-phonebook spacebar cups plasma-camera qmlkonsole breeze-gtk kdeconnect lang krecorder kde-gtk-config vvmplayer plasma-mobile-sounds font-droid kweather plasma-dialer sudo-rs kclock plasma-keyboard font-droid-nonlatin tuned-ppd flatpak font-twemoji[0m
+[15:15:17] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:15:20] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:15:23] [94mNOTE:[0m The failed command's output is above the ^^^ line in the log file: /home/abhi/Desktop/lisa-PMOS/.pmos_cache/log.txt[0m
+[15:15:23] [91mERROR:[0m Command failed (exit code 3): % sudo /home/abhi/Desktop/lisa-PMOS/.pmos_cache/apk.static --no-progress --root /home/abhi/Desktop/lisa-PMOS/.pmos_cache/chroot_rootfs_xiaomi-lisa --arch aarch64 --cache-dir /home/abhi/Desktop/lisa-PMOS/.pmos_cache/cache_apk_aarch64 --repository /home/abhi/Desktop/lisa-PMOS/.pmos_cache/packages/systemd-edge --repository /home/abhi/Desktop/lisa-PMOS/.pmos_cache/packages/edge del .pmbootstrap[0m
+[15:15:23] See also: <https://postmarketos.org/troubleshooting>[0m
+
+Run 'pmbootstrap log' for details.
+
+Before you report this error, ensure that pmbootstrap is up to date.
+Find the latest version here: https://gitlab.postmarketos.org/postmarketOS/pmbootstrap/-/tags
+Your version: 3.12.1
+[92mChannel[0m: systemd-edge (pmaports: main, dirty)
+[92mDevice[0m:  xiaomi-lisa (aarch64)
+[92mUI[0m:      plasma-mobile
+[92msystemd[0m: yes (postmarketos-ui-plasma-mobile doesn't support openrc)

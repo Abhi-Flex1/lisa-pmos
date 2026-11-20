@@ -1,0 +1,24 @@
+From: Jens Reidel <adrian@travitia.xyz>
+Subject: [PATCH] ASoC: qcom: sm8250: Add Xiaomi Lisa soundcard compatible
+
+Add compatible string for Xiaomi 11 Lite 5G NE (lisa).
+
+Signed-off-by: Jens Reidel <adrian@travitia.xyz>
+---
+ sound/soc/qcom/sm8250.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/sound/soc/qcom/sm8250.c b/sound/soc/qcom/sm8250.c
+index a1b2c3d..e4f5a6b 100644
+--- a/sound/soc/qcom/sm8250.c
++++ b/sound/soc/qcom/sm8250.c
+@@ -176,6 +176,7 @@ static const struct of_device_id snd_sm8250_dt_match[] = {
+ 	{ .compatible = "qcom,qrb4210-rb2-sndcard", .data = "sm4250" },
+ 	{ .compatible = "qcom,qrb5165-rb5-sndcard", .data = "sm8250" },
+ 	{ .compatible = "qcom,sm8250-sndcard", .data = "sm8250" },
++	{ .compatible = "xiaomi,lisa-sndcard", .data = "sm7325" },
+ 	{ .compatible = "xiaomi,taoyao-sndcard", .data = "sm7325" },
+ 	{}
+ };
+-- 
+2.45.2

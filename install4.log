@@ -1,0 +1,51 @@
+[15:18:01] [93mWARNING:[0m --no-fde is deprecated, as it is now the default.[0m
+[15:18:01] [92m*** (1/4) PREPARE NATIVE CHROOT ***[0m
+[15:18:02] (native) install cryptsetup util-linux parted[0m
+[15:18:02] [92m*** (2/4) CREATE DEVICE ROOTFS ("xiaomi-lisa") ***[0m
+[15:18:09] (rootfs_xiaomi-lisa) install postmarketos-base-systemd[0m
+[15:18:10] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:18:11] (rootfs_xiaomi-lisa) install postmarketos-base device-xiaomi-lisa postmarketos-ui-plasma-mobile android-tools plasma-camera libcamera postmarketos-base-nofde cups kweather plasma-mobile-sounds plasma-camera qmlkonsole plasma-phonebook kdeconnect dolphin spacebar font-twemoji xdg-user-dirs kclock postmarketos-artwork-wallpapers font-droid-nonlatin flatpak kde-gtk-config lang sudo-rs ttyescape tuned-ppd vvmplayer breeze-gtk discover plasma-keyboard font-droid krecorder plasma-dialer[0m
+[15:18:12] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:18:14] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:18:15] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:18:15] (rootfs_xiaomi-lisa) install postmarketos-mkinitfs[0m
+[15:18:16] Ignoring apk add exit code 3 (usrmerge duplicate-path commit errors; files are installed correctly)[0m
+[15:18:16] (rootfs_xiaomi-lisa) mkinitfs[0m
+[15:18:49]  [92m*** SET LOGIN PASSWORD FOR: 'user' ***[0m
+[15:18:50] [92m*** (3/4) PREPARE INSTALL BLOCKDEVICE ***[0m
+[15:18:58] (native) create xiaomi-lisa.img (4425M)[0m
+[15:18:58] (native) mount /dev/install (xiaomi-lisa.img)[0m
+[15:18:58] (native) partition /dev/install (boot: 512M)[0m
+[15:19:00] Mounting partitions of /dev/loop0 inside the chroot[0m
+[15:19:00] (native) install e2fsprogs[0m
+[15:19:01] (native) format /dev/installp2 (pmOS_root, ext4)[0m
+[15:19:02] (native) mount /dev/installp2 to /mnt/install[0m
+[15:19:02] (native) install e2fsprogs[0m
+[15:19:03] (native) format /dev/installp1 (pmOS_boot, ext2)[0m
+[15:19:04] (native) create /etc/fstab[0m
+[15:19:04] (rootfs_xiaomi-lisa) mkinitfs[0m
+[15:19:42] [92m*** (4/4) FILL INSTALL BLOCKDEVICE ***[0m
+[15:19:42] (native) copy rootfs_xiaomi-lisa to /mnt/install/[0m
+[15:32:14] [0m
+[15:32:14] [92m*** FLASHING INFORMATION ***[0m
+[15:32:14] Run the following to flash your installation to the target device:[0m
+[15:32:14] * pmbootstrap flasher flash_rootfs[0m
+[15:32:14]   Flashes the generated rootfs image to your device:[0m
+[15:32:14]   /home/abhi/Desktop/lisa-PMOS/.pmos_cache/chroot_native/home/pmos/rootfs/xiaomi-lisa.img[0m
+[15:32:14]   ([94mNOTE:[0m This file has a partition table, which contains /boot and / subpartitions. That way we don't need to change the partition layout on your device.)[0m
+[15:32:14] * pmbootstrap flasher flash_kernel[0m
+[15:32:14]   Flashes the kernel + initramfs to your device:[0m
+[15:32:14]   /home/abhi/Desktop/lisa-PMOS/.pmos_cache/chroot_rootfs_xiaomi-lisa/boot[0m
+[15:32:14]   ([94mNOTE:[0m fastboot also supports booting the kernel/initramfs directly without flashing. Use 'pmbootstrap flasher boot' to do that.)[0m
+[15:32:14] * If the above steps do not work, you can also create symlinks to the generated files with 'pmbootstrap export' and flash outside of pmbootstrap.[0m
+[15:32:14] [0m
+[15:32:14] [92m*** SSH DAEMON INFORMATION ***[0m
+[15:32:14] SSH daemon is enabled (disable with --no-sshd).[0m
+[15:32:14] Login as 'user' with the password given during installation.[0m
+[15:32:14] [0m
+[15:32:14] [92m*** FIREWALL INFORMATION ***[0m
+[15:32:14] Firewall is enabled, but may not work (couldn't determine if kernel supports nftables).[0m
+[15:32:14] For more information: https://postmarketos.org/firewall[0m
+[15:32:14] [0m
+[15:32:14] [94mNOTE:[0m chroot is still active (use 'pmbootstrap shutdown' as necessary)[0m
+[15:32:14] [92mDONE![0m[0m
