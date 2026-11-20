@@ -4,8 +4,10 @@ GitHub repo: https://github.com/Abhi-Flex1/lisa-pmos-mainline
 
 ## What is saved on disk (survives shutdown)
 
-* `.pmos_cache/` — pmbootstrap workdir (chroots, kernel source with ~4356 compiled
-  object files, APKs). This is gitignored but on the local disk.
+* `.pmos_cache/` — pmbootstrap workdir (chroots, APKs). Gitignored, on local disk.
+* `pmaports/device/community/linux-postmarketos-qcom-sc7280/.kernel-build-cache/`
+  — the **full compiled kernel tree with all 4356 object files**, moved here on
+  2026-11-20 so a shutdown will not lose it. `prepare()` restores it automatically.
 * `output/packages/*.apk` — copies of all built APKs (kept outside `.pmos_cache`).
 * `output/images/` — exported images from the earlier successful build
   (symlinks point into `.pmos_cache`; re-export after reboot with
