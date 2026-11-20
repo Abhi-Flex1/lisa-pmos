@@ -30,24 +30,32 @@ PREPARE = '''prepare() {
 \tdefault_prepare
 \tcp "$srcdir/config-$_flavor.$arch" .config
 
-\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
-\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
-\tprintf 'dtb-$(CONFIG_ARCH_QCOM) += sm7325-xiaomi-lisa.dtb\\n' \\
-\t\t>> arch/arm64/boot/dts/qcom/Makefile
+\t# Restore a previously compiled tree if available. This contains all
+\t# 4356 object files, the patched DTS/driver and the generated .config,
+\t# so `make` only needs to finish the link instead of recompiling.
+\tif [ -d "$startdir/.kernel-build-cache" ]; then
+\t\techo "Restoring cached kernel build tree ..."
+\t\tcp -a "$startdir/.kernel-build-cache/." ./
+\telse
+\t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
+\t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
+\t\tprintf 'dtb-$(CONFIG_ARCH_QCOM) += sm7325-xiaomi-lisa.dtb\\n' \\
+\t\t\t>> arch/arm64/boot/dts/qcom/Makefile
 
-\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
-\tprintf 'obj-m += panel-csot-vtdr6130.o\\n' \\
-\t\t>> drivers/gpu/drm/panel/Makefile
+\t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
+\t\tprintf 'obj-m += panel-csot-vtdr6130.o\\n' \\
+\t\t\t>> drivers/gpu/drm/panel/Makefile
 
-\t# The machine driver needs the xiaomi,lisa-sndcard compatible string.
-\tpatch -p1 -i \\
-\t\t"$startdir/0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch"
+\t\t# The machine driver needs the xiaomi,lisa-sndcard compatible string.
+\t\tpatch -p1 -i \\
+\t\t\t"$startdir/0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch"
 
-\t# Boot-time framebuffer and simpledrm fallback (splash / unl0kr / shell).
-\t./scripts/config --enable FB_SIMPLE
-\t./scripts/config --enable SYSFB_SIMPLEFB
-\t./scripts/config --enable DRM_SIMPLEDRM
-\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
+\t\t# Boot-time framebuffer and simpledrm fallback (splash / unl0kr / shell).
+\t\t./scripts/config --enable FB_SIMPLE
+\t\t./scripts/config --enable SYSFB_SIMPLEFB
+\t\t./scripts/config --enable DRM_SIMPLEDRM
+\t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
+\tfi
 }'''
 
 OLD_PREPARE = '''prepare() {

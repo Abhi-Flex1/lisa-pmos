@@ -130,3 +130,7 @@ Kernel APKBUILD patched: DTB + panel module + soundcard quirk + simplefb/simpled
 [21:53:33] (native) install ccache-cross-symlinks abuild clang[0m
 [21:53:50] (native) install linux-headers findutils openssl-dev llvm flex pahole zstd lld bash installkernel patch bison python3 elfutils-dev clang perl[0m
 [21:54:10] [93m=>[0m [94medge/linux-postmarketos-qcom-sc7280[0m: Building package (cross compiling: cross-native)[0m
+[23:38:32] [94mNOTE:[0m The failed command's output is above the ^^^ line in the log file: /home/abhi/Desktop/lisa-PMOS/.pmos_cache/log.txt[0m
+[23:38:32] [91mERROR:[0m Couldn't build aarch64/linux-postmarketos-qcom-sc7280-7.2.9-r5.apk![0m
+
+Run 'pmbootstrap log' for details.
