@@ -1,0 +1,35 @@
+# Maintainer: Abhi <abhi@users.noreply.github.com>
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=alsa-ucm-conf-lisa
+pkgver=1
+pkgrel=1
+pkgdesc="ALSA UCM2 profiles for Xiaomi 11 Lite 5G NE (lisa)"
+url="https://github.com/mainlining/alsa-ucm-conf"
+# aarch64 (not noarch): sc7280-mainline's alsa-ucm-conf-qcom-sc7280 is
+# aarch64-only, and pmbootstrap resolves a noarch aport's deps against noarch.
+arch="aarch64"
+license="MIT"
+depends="alsa-ucm-conf-qcom-sc7280"
+options="!check"
+source="
+	lisa.conf
+	HiFi.conf
+"
+
+package() {
+	_ucm="$pkgdir"/usr/share/alsa/ucm2
+
+	install -Dm644 "$srcdir/lisa.conf" "$_ucm/Xiaomi/lisa/lisa.conf"
+	install -Dm644 "$srcdir/HiFi.conf" "$_ucm/Xiaomi/lisa/HiFi.conf"
+
+	# The snd-sm8250 machine driver sets driver_name="sm7325" and card
+	# name="lisa" (from the sound node's model property in the DTS).
+	# alsa-lib resolves UCM2 profiles via ucm2/conf.d/<driver>/<card>.
+	install -d "$_ucm/conf.d/sm7325"
+	ln -sf ../../Xiaomi/lisa/lisa.conf "$_ucm/conf.d/sm7325/lisa.conf"
+}
+
+sha512sums="
+a3789d5d5af798b34793ad256fcbdd1d3a208169818b0c4333e451b99facacbfe673fc9866f906a3f7f0ff0e85180bb15ad574c3ddd0e4afb0436aad31ed67c4  lisa.conf
+5bbd4cd5740fdef3237850dbe1a0dacf2518ff406e9c8cbfa58914d2474c0efd1e66480b33055c4a2b4a963e1839ac2f79bb56f4fc831a97da8786fcb2905971  HiFi.conf
+"

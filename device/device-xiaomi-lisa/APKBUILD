@@ -1,0 +1,51 @@
+# Maintainer: Jens Reidel <adrian@travitia.xyz>
+# Reference: <https://postmarketos.org/devicepkg>
+
+pkgname=device-xiaomi-lisa
+pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
+pkgver=1
+pkgrel=3
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	alsa-ucm-conf-qcom-sc7280
+	alsa-ucm-conf-lisa
+	firmware-xiaomi-lisa-adsp
+	firmware-xiaomi-lisa-cdsp
+	firmware-xiaomi-lisa-gpu
+	firmware-xiaomi-lisa-ipa
+	firmware-xiaomi-lisa-modem
+	firmware-xiaomi-lisa-sensors
+	firmware-xiaomi-lisa-vpu
+	firmware-xiaomi-lisa-wpss
+	firmware-qcom-adreno-a660
+	linux-firmware-qca
+	linux-postmarketos-qcom-sc7280
+	make-dynpart-mappings
+	android-tools
+	postmarketos-base
+	soc-qcom
+	soc-qcom-modem
+	soc-qcom-qbootctl
+	unl0kr-fbforcerefresh
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	modules-initfs
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+sha512sums="
+560d66eab0979274476ce454edc43e3a101e47c3e2e2b9a16b418e5bc9c3ab6d36fc5a3e984019dd0b1151bbfeba0d9a9d64c5376cc159577d435e5025b0e803  deviceinfo
+a6e4bc191e48d97ed6ee0607a2873639bb51d75843ee1fc9ac82364cba059ba722b3895dd9b0e5a01a7014d39578aadb0cc4e7befc0d4403dba4a15edeb60ce7  modules-initfs
+"
