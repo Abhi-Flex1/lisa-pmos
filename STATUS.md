@@ -261,3 +261,59 @@ Flashed the Plasma Mobile rootfs + boot image to internal UFS and debugged + ver
 | Camera | `camss` ISP + `/dev/media0` + `/dev/v4l-subdev27` (`imx355 19-001a`, 8MP rear ultrawide) bound cleanly; `libcamera v0.8.0` loads `/usr/share/libcamera/ipa/softisp/imx355.yaml` and exposes `62. imx355 [libcamera]` / `63. Built-in Back Camera` in PipeWire/WirePlumber (`plasma-camera`); macro `s5k5e9` / wide / front sensors remain WIP | **Rear ultrawide IMX355 working in libcamera; other sensors WIP** |
 | Haptics & Vibration | Custom mainline-style `aw8624` I2C `FF_RUMBLE` driver (`i2c4 @ 0x5a`, chip ID `0x24`, reset GPIO 35, LRA `205 Hz` CONT mode) + `73-xiaomi-lisa-haptics.rules` (`FEEDBACKD_TYPE=vibra`); `/dev/input/event4` (`aw8624_haptic`) verified with live `FF_RUMBLE` & `fbcli` | **Verified working** |
 | Power & Volume Keys | `POWERDEVIL_NO_DDCUTIL=1` drop-in fixes `plasma-powerdevil` hang (was timing out probing CCI I2C buses); `PowerDevil` starts active and holds `handle-power-key` lock; `15 ms` debounce added to `key-volume-up`; PulseAudio `tsched=0` + `48000 Hz` + no-X11 drop-in fixes volume control & browser audio deadlocks | **Verified working** |
+
+## 9. Resume after Antigravity quota exhaustion (2026-11-21, late evening)
+
+The Antigravity `/goal` session (`3ce6b9e1-...`) stopped at its final step with
+`RESOURCE_EXHAUSTED` after 1215 steps. Its working tree was clean (last commit
+`833155b` at 21:05); all of its post-commit work was live on-device debugging
+over SSH (`172.16.42.1`, password `147147`) and scratch files in its brain dir.
+The investigation and its findings were resumed as follows.
+
+### plasma-camera `DISPLAY=:0` hang — ROOT CAUSED AND FIXED
+
+The session had bisected environment variables and proven that `DISPLAY=:0`
+alone hangs `plasma-camera` while `WAYLAND_DISPLAY=wayland-1` alone streams
+30 frames at ~25 ms/frame. The final step showed `kwin_xwl: Xwayland process
+failed to start` and stale `X0`/`X1` sockets.
+
+Direct check on the phone confirmed **`xwayland` was not installed at all**
+(`command -v Xwayland` empty, `apk info -e xwayland` missing), while
+`kwin_wayland` was launched with `--xwayland`. Any Qt app started with
+`DISPLAY=:0` therefore blocked forever trying to reach a non-existent X server.
+
+Fix applied:
+* Live: `apk add xwayland` on the device. After the next boot `Xwayland`
+  (`/usr/sbin/Xwayland`) runs and the `X0`/`X1` sockets are fresh.
+* Permanent: added `xwayland` to `device/device-xiaomi-lisa/APKBUILD` `depends`.
+
+Verified after reboot: `XDG_RUNTIME_DIR=/run/user/10000 WAYLAND_DISPLAY=wayland-1
+DISPLAY=:0 timeout 5 plasma-camera` now finds the IMX355, starts the viewfinder
+and processes 30 frames (`Debayer ... 30 frames in 768966 us, 25632 us/frame`),
+whereas it produced no output at all before the fix.
+
+### AW8624 haptics — verified working; earlier I2C timeouts were transient
+
+A `modprobe aw8624` in the already-running session failed with
+`error -ETIMEDOUT: Failed to read AW8624 chip ID` because `990000.i2c` had
+accumulated a stuck bus (periodic `geni_i2c_gpi_xfer: I2C timeout` plus
+`gpi 900000.dma-controller: cmd: CH STOP completion timeout` in dmesg).
+Investigation compared the mainline `qup-i2c4-data-clk-state` (gpio16/gpio17,
+function `qup04`, no drive-strength/bias) with stock DTBO fragment 85
+(`drive-strength = <6>; bias-pull-up;`) and a DTB pinconf fix was drafted.
+
+However, after a clean reboot with the **unmodified DTB** the module loads from
+`modules-load.d/xiaomi-lisa.conf`, probes successfully (`id=0x24`), creates
+`/dev/input/event4` (`aw8624_haptic`), and `fbcli -E button-pressed` triggers
+feedback with **zero I2C timeouts in dmesg**. The bus hang was an artifact of the
+long debugging session (repeated forced `/dev/i2c-4` register reads), so the
+speculative DTS pinconf/clock change was reverted rather than shipped untested.
+
+### Keyboard sound — upstream incompatibility (documented, not fixed)
+
+`plasma-keyboard` 6.8.3's `Keyboard.qml` creates a `MultiSoundEffect` QML type
+from `QtQuick.VirtualKeyboard`, but installed `qt6-qtvirtualkeyboard` 6.12.0
+does not export that type anywhere (absent from `qmldir`, `*.qmltypes` and all
+plugin binaries). This is upstream API drift, not a device issue; `paplay` works
+(`PAPLAY_OK`) and audio volume is at 65%, so sound output itself is fine.
+Proper fix requires patching/rebuilding `plasma-keyboard` against Qt 6.12.
