@@ -23,6 +23,7 @@ from pathlib import Path
 LISA_FILES = (
     "sm7325-xiaomi-lisa.dts",
     "panel-csot-vtdr6130.c",
+    "aw8624.c",
     "0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch",
 )
 
@@ -47,9 +48,12 @@ PREPARE = '''prepare() {
 \t\trm -rf "$builddir"
 \t\tmkdir -p "$builddir"
 \t\ttar -C "$startdir/.kernel-build-cache" -cf - . | tar -C "$builddir" -xf -
-\t\t# Always overlay the latest repo DTS and panel driver onto the cached tree.
+\t\t# Always overlay the latest repo DTS and out-of-tree drivers onto the cached tree.
 \t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
 \t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
+\t\tcp "$startdir/aw8624.c" drivers/input/misc/
+\t\tgrep -q 'aw8624.o' drivers/input/misc/Makefile || printf 'obj-m += aw8624.o\\n' >> drivers/input/misc/Makefile
+\t\t./scripts/config --module VIDEO_IMX355
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
 \t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
@@ -60,14 +64,20 @@ PREPARE = '''prepare() {
 \t\tprintf 'obj-m += panel-csot-vtdr6130.o\\n' \\
 \t\t\t>> drivers/gpu/drm/panel/Makefile
 
+\t\tcp "$startdir/aw8624.c" drivers/input/misc/
+\t\tprintf 'obj-m += aw8624.o\\n' \\
+\t\t\t>> drivers/input/misc/Makefile
+
 \t\t# The machine driver needs the xiaomi,lisa-sndcard compatible string.
 \t\tpatch -p1 -i \\
 \t\t\t"$startdir/0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch"
 
-\t\t# Boot-time framebuffer and simpledrm fallback (splash / unl0kr / shell).
+\t\t# Boot-time framebuffer and simpledrm fallback (splash / unl0kr / shell),
+\t\t# plus rear ultrawide IMX355 camera sensor module.
 \t\t./scripts/config --enable FB_SIMPLE
 \t\t./scripts/config --enable SYSFB_SIMPLEFB
 \t\t./scripts/config --enable DRM_SIMPLEDRM
+\t\t./scripts/config --module VIDEO_IMX355
 \t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \tfi
 }'''

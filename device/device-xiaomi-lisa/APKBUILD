@@ -4,11 +4,12 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=4
+pkgrel=5
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck"
+install="$pkgname.post-install $pkgname.post-upgrade"
 depends="
 	alsa-ucm-conf-qcom-sc7280
 	alsa-ucm-conf-lisa
@@ -38,6 +39,10 @@ makedepends="devicepkg-dev"
 source="
 	deviceinfo
 	modules-initfs
+	99-powerdevil-no-ddcutil.conf
+	99-pulseaudio-no-x11.conf
+	xiaomi-lisa-modules.conf
+	73-xiaomi-lisa-haptics.rules
 "
 
 build() {
@@ -53,9 +58,21 @@ package() {
 	devicepkg_package $startdir $pkgname
 
 	install -Dm644 "$srcdir/dtbo.img" "$pkgdir/boot/dtbo.img"
+	install -Dm644 "$srcdir/99-powerdevil-no-ddcutil.conf" \
+		"$pkgdir/etc/systemd/user/plasma-powerdevil.service.d/99-no-ddcutil.conf"
+	install -Dm644 "$srcdir/99-pulseaudio-no-x11.conf" \
+		"$pkgdir/etc/systemd/user/app-pulseaudio@autostart.service.d/99-no-x11.conf"
+	install -Dm644 "$srcdir/xiaomi-lisa-modules.conf" \
+		"$pkgdir/etc/modules-load.d/xiaomi-lisa.conf"
+	install -Dm644 "$srcdir/73-xiaomi-lisa-haptics.rules" \
+		"$pkgdir/etc/udev/rules.d/73-xiaomi-lisa-haptics.rules"
 }
 
 sha512sums="
 badcc19e27927830e918523cdc7c2f230644a43b9be3a9a7abe1fab7f0dd1d2ed70d290158c3e2c7511adb770b97fa013323594f81ebcd8351911a8aa8bd3462  deviceinfo
 a6e4bc191e48d97ed6ee0607a2873639bb51d75843ee1fc9ac82364cba059ba722b3895dd9b0e5a01a7014d39578aadb0cc4e7befc0d4403dba4a15edeb60ce7  modules-initfs
+dc341d080409a09ac5fd0e0d92d090bfcf0adb6a0890d2e608c8e99df02f718b08194187339b3d8478545a0578b85129aa540dae24fe0999767635c53c217631  99-powerdevil-no-ddcutil.conf
+f89a78b103e29733307429f30e5b4dc9d12f59d93fd3eaa081d22bed8a297b80edd060d9590a2d88349eea89d23ed21930a915db0f4e07abf698ffedfc759d7d  99-pulseaudio-no-x11.conf
+df648d97f0b1b8abdec93eef1ed8ff0c6766e96d1fe55d207d0fa6aed032ae6acd2b2751eb5cc1af2cc934e74d767cf82a76e12fcfcbf53b25358ab594cc69b2  xiaomi-lisa-modules.conf
+6a462c5aa29b400a57529b90fc11636858ae865258b75654930390a4c4f498fcfdc0aa242c8c39537d91133c594c4bbd3c70082cad60cae33b33a856504b8ba5  73-xiaomi-lisa-haptics.rules
 "
