@@ -779,7 +779,9 @@
 		pinctrl-names = "default";
 
 		orientation = <1>;
-		rotation = <270>;
+		/* Sensor is mounted flipped relative to the stock camera HAL;
+		 * 270 produced an upside-down image in libcamera/plasma-camera. */
+		rotation = <90>;
 
 		port {
 			camera_imx355_ep: endpoint {

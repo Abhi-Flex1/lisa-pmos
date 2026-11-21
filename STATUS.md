@@ -317,3 +317,60 @@ does not export that type anywhere (absent from `qmldir`, `*.qmltypes` and all
 plugin binaries). This is upstream API drift, not a device issue; `paplay` works
 (`PAPLAY_OK`) and audio volume is at 65%, so sound output itself is fine.
 Proper fix requires patching/rebuilding `plasma-keyboard` against Qt 6.12.
+
+## 10. Camera work (2026-11-21, continued session)
+
+### IMX355 image upside-down — FIX IN TREE (needs flashing)
+
+`cam -p` on the device reports `Property: Rotation = 270` for the IMX355,
+which comes directly from `rotation = <270>` in
+`kernel/dts/sm7325-xiaomi-lisa.dts`. That is 180 degrees off from the correct
+mounting orientation, so the property has been changed to `rotation = <90>`.
+A patched `boot.img` with the corrected DTB is prepared at
+`/tmp/opencode/boot-cam-rotation.img` (the DTB is appended to the kernel in this
+header-v0 boot image; only the DTB blob and `kernel_size` were updated).
+
+Flashing still requires fastboot, which cannot currently be reached from
+pmOS: the `nvmem-reboot-mode` driver is not built into this kernel, so
+`reboot bootloader` just performs a normal reboot. An out-of-tree build of that
+module was made and loads, but its probe defers (`-EPROBE_DEFER`, likely the
+nvmem cell provider), so it cannot be used to enter fastboot either. Use the
+physical key combination (Volume Down + Power) to reach fastboot, then:
+
+```
+fastboot flash boot_a /tmp/opencode/boot-cam-rotation.img
+fastboot flash boot_b /tmp/opencode/boot-cam-rotation.img
+fastboot reboot
+```
+
+### Why only one camera is exposed
+
+The stock HyperOS DTBO declares **four** rear/front sensors:
+
+| Stock node | Position | CSI PHY | CCI bus | Mainline status |
+| :--- | :--- | :--- | :--- | :--- |
+| cam-sensor0 | main wide 64MP | csiphy1 | cci1 | no driver (S5KGW3) |
+| cam-sensor1 | front 20MP | csiphy0 | cci0 | no driver (S5K3T2) |
+| cam-sensor2 | macro 5MP | csiphy2 | cci0 | no driver (S5K5E9) |
+| cam-sensor3 | ultrawide 8MP (IMX355) | csiphy3 | cci1 | **working** |
+
+The mainline DTS only binds the IMX355. The other sensors are powered (all
+PM8008 LDOs are `regulator-always-on`) but their MCLKs are never enabled and
+their reset GPIOs stay asserted, so they do not respond on the CCI buses.
+`i2cdetect` on CCI buses 16-19 only sees the IMX355 at 0x1a plus EEPROMs/VCM;
+releasing reset GPIOs from userspace is not enough without MCLK enable.
+
+### Path to bring up the remaining sensors
+
+1. **Front 20MP S5K3T2** — an upstream V4L2 driver exists (Armandas Kvietkus,
+   v4 patch, 2026-10-11), already downloaded to the previous session's scratch
+   dir (`s5k3t2.c` + `samsung,s5k3t2.yaml`). This is the easiest next sensor:
+   add the driver to `scripts/patch-kernel-apkbuild.py`, add a `camera@<addr>`
+   node on `&cci0` with vdda/vddd/vddio supplies, `CAM_CC_MCLK0_CLK`, reset
+   GPIO 20, a `csiphy0_ep` endpoint in `&camss`, and a soft-IPA tuning file.
+   The remaining unknown is the exact I2C address on this board.
+2. **Main 64MP S5KGW3 and macro 5MP S5K5E9** — **no mainline V4L2 drivers
+   exist**. The M52 mainline project (same GW3 sensor) keeps it in a
+   proprietary `camx` patch, not a mainline sensor driver. Bringing these up
+   requires writing/porting new kernel drivers from vendor sources plus
+   libcamera tuning — a significantly larger effort.
