@@ -369,19 +369,39 @@
 		#sound-dai-cells = <1>;
 	};
 
-	/* Side-mounted FPC1020 capacitive fingerprint sensor (power-button).
-	 * The vendor driver is TEE-only; this node brings up power/reset/IRQ so
-	 * a REE or QSEE driver can bind later. */
-	fingerprint_fpc: fingerprint-fpc {
-		compatible = "fpc,fpc1020";
-		interrupt-parent = <&tlmm>;
-		interrupts = <34 IRQ_TYPE_EDGE_FALLING>;
-		reset-gpios = <&tlmm 43 GPIO_ACTIVE_LOW>;
-		irq-gpios = <&tlmm 34 GPIO_ACTIVE_HIGH>;
-		vdd-supply = <&vreg_l3c_3p0>;
-		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&fp_reset_active &fp_irq_active>;
-		pinctrl-1 = <&fp_reset_reset>;
+	/* Side-mounted FPC1020 capacitive fingerprint sensor (power button).
+	 * Software SPI on GPIO 56-59: the hardware QUP14 SPI master may be
+	 * secure-world owned, so we bit-bang the pins from Linux instead. */
+	fp_spi: spi-fingerprint {
+		status = "disabled";
+		compatible = "spi-gpio";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		sck-gpios = <&tlmm 58 GPIO_ACTIVE_HIGH>;
+		miso-gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
+		mosi-gpios = <&tlmm 56 GPIO_ACTIVE_HIGH>;
+		cs-gpios = <&tlmm 59 GPIO_ACTIVE_LOW>;
+		num-chipselects = <1>;
+
+		fingerprint_fpc: fpc1020@0 {
+			compatible = "fpc,fpc1020";
+			reg = <0>;
+			spi-max-frequency = <2000000>;
+
+			interrupt-parent = <&tlmm>;
+			interrupts = <34 IRQ_TYPE_EDGE_FALLING>;
+			reset-gpios = <&tlmm 43 GPIO_ACTIVE_LOW>;
+
+			/* lisa has a single 3.3 V rail; expose it under the three
+			 * supply names the REE driver expects. */
+			vcc-supply = <&vreg_l3c_3p0>;
+			vdda-supply = <&vreg_l3c_3p0>;
+			vddio-supply = <&vreg_l3c_3p0>;
+
+			pinctrl-names = "default", "sleep";
+			pinctrl-0 = <&fp_reset_active &fp_irq_active>;
+			pinctrl-1 = <&fp_reset_reset>;
+		};
 	};
 };
 
@@ -1562,6 +1582,9 @@
 	 * 32-33: SMB1394 (SPMI)
 	 * 56-59: fingerprint reader (SPI)
 	 */
+	/* 56-59: fingerprint sensor SPI pins are secure-world owned.
+	 * Accessing them from Linux (hardware or software SPI) hard-freezes
+	 * the SoC with a TrustZone exception. Keep them reserved. */
 	gpio-reserved-ranges = <32 2>, <48 4>, <56 4>;
 
 	qup_uart7_sleep_cts: qup-uart7-sleep-cts-state {
