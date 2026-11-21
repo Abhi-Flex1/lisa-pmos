@@ -145,8 +145,11 @@ fi
 TEMP_EXPORT="$(mktemp -d /tmp/pmos-export.XXXXXX)"
 pmbootstrap export "$TEMP_EXPORT"
 mkdir -p "$IMAGES_DIR"
-rm -f "$IMAGES_DIR"/*
+rm -rf "$IMAGES_DIR"/*
 cp -aL "$TEMP_EXPORT"/. "$IMAGES_DIR"/
+if [ -f "$WORK_DIR/chroot_rootfs_xiaomi-lisa/boot/dtbo.img" ]; then
+    cp -a "$WORK_DIR/chroot_rootfs_xiaomi-lisa/boot/dtbo.img" "$IMAGES_DIR/dtbo.img"
+fi
 rm -rf "$TEMP_EXPORT"
 
 mkdir -p "$PACKAGES_DIR"
