@@ -88,13 +88,12 @@ p.parent.mkdir(parents=True, exist_ok=True)
 file.save(p, c)
 PY
 
-# A workdir owned by the "builder" user inside Docker needs this mapping.
-if sudo -n true 2>/dev/null; then
-    sudo chown -R 12345:12345 "$WORK_DIR/packages" 2>/dev/null || true
-fi
+# The chroot builds as uid 12345 while this script copies as the host user;
+# make the package dir writable by both so neither side gets "Permission denied".
+mkdir -p "$WORK_DIR/packages/edge/aarch64"
+sudo chmod -R a+rwX "$WORK_DIR/packages" 2>/dev/null || true
 
 # Reuse previously built APKs when present (kernel rebuild is expensive).
-mkdir -p "$WORK_DIR/packages/edge/aarch64"
 if compgen -G "$PACKAGES_DIR/*.apk" > /dev/null; then
     echo "==> Staging cached APKs from $PACKAGES_DIR ..."
     cp "$PACKAGES_DIR"/*.apk "$WORK_DIR/packages/edge/aarch64/"
