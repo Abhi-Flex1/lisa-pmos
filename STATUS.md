@@ -374,3 +374,49 @@ releasing reset GPIOs from userspace is not enough without MCLK enable.
    proprietary `camx` patch, not a mainline sensor driver. Bringing these up
    requires writing/porting new kernel drivers from vendor sources plus
    libcamera tuning — a significantly larger effort.
+
+## 11. Microphone capture enablement (2026-11-21, in progress)
+
+Research (report: `/tmp/opencode/reports/microphone.md`) identified the audio
+hardware and three software gaps. Live evidence: `arecord -D hw:0,0` fails with
+`Invalid argument` and `ASoC: no backend DAIs enabled for MultiMedia1`;
+PulseAudio sees 0 physical sources.
+
+### Hardware
+* **WCD9385** split codec on SoundWire (RX slave `swr0@0,4`, TX slave `swr1@0,3`),
+  reset GPIO 83, supplies `vreg_l18b_1p8` / `vreg_l17b_1p8` / `vreg_bob`.
+* 4 active analog microphones: AMIC1 main/bottom, AMIC2 headset (CTIA), AMIC4
+  back, AMIC5 top (AMIC3 unused). Route: AMIC -> WCD ADC1..4 -> SoundWire TX ->
+  LPASS TX macro -> Q6AFE `TX_CODEC_DMA_TX_3` (port 120) -> Q6ASM MultiMedia3.
+
+### Changes made (in tree, pending flash/verification)
+* `kernel/dts/sm7325-xiaomi-lisa.dts`: added WCD9385 codec node + GPIO83 reset
+  pinconf, enabled `swr0`/`swr1` with WCD RX/TX slaves, enabled
+  `lpass_tx_macro`, added q6afedai port 120 and q6asmdai ports 1/2, and added
+  `audio-routing`, MM2/MM3 frontends and a `WCD Capture` DAI link to `&sound`.
+  DTS compiles cleanly. Patched boot image staged at `output/images/boot-mic.img`.
+* `audio/alsa-ucm-conf-lisa/HiFi.conf`: added capture verb csets and a
+  `SectionDevice."Mic"` with `CapturePCM "hw:${CardId},2"`; pkgrel bumped to 4.
+  The new profile was also copied live onto the device for testing.
+
+Verification after flash: `lsmod | grep wcd938`, `arecord -D hw:0,2 ...`,
+`pactl list sources` (expect `alsa_input.platform-sound.HiFi__Mic__source`),
+and a speaker playback regression check.
+
+## 12. Fingerprint sensor — research verdict (2026-11-21)
+
+Report: `/tmp/opencode/reports/fingerprint.md`.
+
+* The sensor is a **side-mounted capacitive FPC1020-family** part (Xiaomi "Arc
+  side fingerprint sensor"), **not** an under-display optical Goodix part.
+  Stock DTBO fragment 80: `compatible = "fpc,fpc1020"`, SPI QUP14 / `&spi14`
+  (GPIO 56/57/58 + CS 59), reset GPIO 43, IRQ GPIO 34, supply L3C = 3.3 V.
+  The repo DTS already reserves GPIO 56-59 in `gpio-reserved-ranges`.
+* **No mainline kernel driver exists**; the vendor `fpc1020_tee.c` only handles
+  power/reset/IRQ, while matching happens in a proprietary signed QSEE trustlet.
+  `fprintd`/`libfprint` are installed but see no device, and the shipped
+  `kde-fingerprint` PAM stack includes a nonexistent `fingerprint-auth` service.
+* **Verdict: not a quick win.** Two long paths: (A) REE raw-SPI imaging plus a
+  new libfprint driver (uncertain — the SPI block may be secure-world owned), or
+  (B) TEE/QSEE trustlet extraction and reverse engineering (weeks of work,
+  legally uncertain for redistribution). Not attempted in this session.
