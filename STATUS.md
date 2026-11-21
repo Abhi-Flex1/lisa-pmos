@@ -219,6 +219,43 @@ Before generating the final Plasma Mobile images (`output/images/`):
 * Removed the duplicate conflicting `Earpiece` entry on `hw:${CardId},0` from `audio/alsa-ucm-conf-lisa/HiFi.conf`.
 * Updated `scripts/flash.sh` to flash zeroed `dtbo_a/b`, disabled `vbmeta_a/b`, header-v0 `boot_a/b`, and `userdata`, and fixed `scripts/build.sh` directory cleanup (`rm -rf "$IMAGES_DIR"/*`).
 
-### Remaining on-device step
+### Remaining on-device step (COMPLETED — see Section 8 below)
 
-Flash the freshly built Plasma Mobile rootfs + boot image via `./scripts/flash.sh` once the device is put into fastboot (Power + Volume Down), then run `./scripts/device-report.sh ssh` over `172.16.42.1` to verify full userspace subsystems (Plasma Mobile UI, Wi-Fi, Bluetooth, audio, modem, battery, camera).
+Flashing and full live Plasma Mobile userspace bring-up were completed on real hardware (`xiaomi-lisa`, serial `ebe7291`).
+
+## 8. Full KDE Plasma Mobile live bring-up & hardware verification (2026-11-21)
+
+Flashed the Plasma Mobile rootfs + boot image to internal UFS and debugged + verified every major subsystem directly on the connected phone (`Linux xiaomi-lisa 7.2.9 #6-postmarketos-qcom-sc7280 SMP PREEMPT aarch64`):
+
+### Fixes made and verified on real hardware
+
+1. **Display auto-wake, 90Hz/60Hz timings, OLED regulator voltages & backlight (`kernel/drivers/panel-csot-vtdr6130.c`, `kernel/dts/sm7325-xiaomi-lisa.dts`)**:
+   * Decompiled stock HyperOS `dtbo.img` (entry 7, `qcom,mdss_dsi_k9d_36_02_0a_dsc_cmd`) and verified this phone has the Tianma `k9d_36_02_0a` 1080x2400 DSC command-mode OLED panel (already matching the init sequence in `panel-csot-vtdr6130.c`, kept under compatible `csot,vtdr6130`).
+   * Fixed 90Hz preferred mode timings (`vfp=4`, `clock=241793 kHz`, `0xb2 0x12 0x12`, `DRM_MODE_TYPE_PREFERRED`) — previously 90Hz erroneously used 60Hz's `vfp=1212` (`362689 kHz`) and `0xb2 0x0c 0x0c`.
+   * Fixed browned-out OLED/DSI regulator bounds in `sm7325-xiaomi-lisa.dts`: `vreg_l13c_3p0` (`3.0V`, was `2.704V`), `vreg_l12c_1p8` (`1.8V`, was `1.656V`), `vreg_l10c_0p88` (`0.88V`, was `0.720V`), and `vreg_l6b_1p2` (`1.2V`, was `1.144V`).
+   * Fixed 4-byte `0x51 <hi> <lo> 0x00 0x00` DCS backlight writes in HS mode and moved panel initialization + DSC PPS into `.enable()` with 150ms post-reset settle and `MIPI_DCS_GET_POWER_MODE` (`0x0a`) wake verification.
+   * **Verified live after cold reboot**: screen lights up automatically straight into KDE Plasma Mobile (`brightness=1500 actual_brightness=1500 max=4095`), full OOBE completed, dynamic brightness changes latch cleanly on vsync.
+2. **Audio — kernel Q6AFE/LPASS routing & PulseAudio UCM2 deadlock (`kernel/dts/sm7325-xiaomi-lisa.dts`, `audio/alsa-ucm-conf-lisa/HiFi.conf`)**:
+   * Added `&q6afedai { dai@16 { reg = <PRIMARY_MI2S_RX>; qcom,sd-lines = <1>; }; };` (fixed `ASoC error (-22) on PRI_MI2S_RX: no line is assigned`) and `&lpass_audiocc { compatible = "qcom,qcm6490-lpassaudiocc"; /delete-property/ power-domains; };` (fixed `lpass_audio_cc-sc7280 probe failed -110`).
+   * Removed `PlaybackMixer "default:${CardId}"` from `audio/alsa-ucm-conf-lisa/HiFi.conf`, which had caused `pulseaudio` to deadlock against `alsa-plugins-pulse` (`unix_wait_for_peer`) on its own socket.
+   * **Verified live after cold reboot**: both TFA9873 stereo amps (`3-0034`, `3-0035`, rev `0x0b73`) probe cleanly, zero Q6AFE/LPASS/ASoC errors, `PulseAudio 17.0` auto-starts with `Default Sink: alsa_output.platform-sound.HiFi__Speaker__sink` (`[Out] Speaker`), and audible playback confirmed both via ALSA (`speaker-test -D plughw:0,0`) and PulseAudio (`speaker-test -D pulse`).
+
+### Live hardware verification matrix (2026-11-21)
+
+| Subsystem | Live evidence on connected `xiaomi-lisa` | Status |
+| :--- | :--- | :--- |
+| Boot & UFS storage | Boots directly from internal UFS (`boot_a/b` header v0 + appended DTB, zeroed `dtbo_a/b`, `vbmeta --flags 2`, `userdata` = `sda33`, `super` = `sda20`) | **Verified working** |
+| Display & Backlight | Auto-wakes on boot into Plasma Mobile; `card1-DSI-1` 1080x2400 @ 90Hz/60Hz; `brightness=1500 actual_brightness=1500`; dynamic brightness works | **Verified working** |
+| Touchscreen & Keys | `Goodix Berlin Capacitive TouchScreen` (full Plasma Mobile lockscreen + OOBE completed), `pmic_pwrkey`, `pmic_resin`, `gpio-keys`, `lisa Headset Jack` | **Verified working** |
+| GPU (Adreno 642L) | `a660_sqe.fw` + `a660_gmu.bin` (`GMU v3.1.10`), `/dev/dri/card1` + `/dev/dri/renderD128`, `kwin_wayland` hardware compositing | **Verified working** |
+| Audio (Speakers) | `card 0: lisa`, TFA9873 `3-0034`/`3-0035`, `PulseAudio 17.0` `alsa_output.platform-sound.HiFi__Speaker__sink` auto-starts on boot, audible sound confirmed | **Verified working** |
+| Wi-Fi (`wlan0`) | WCN6750 (`ath11k`, `wpss` running); auto-connects to WPA2 network (`192.168.8.120/24`), internet `ping 1.1.1.1` (`85.3 ms`) | **Verified working** |
+| Bluetooth (`hci0`) | WCN6750 controller `02:00:A0:B8:2D:D3` powers on (`Powered: yes`), discovery starts cleanly | **Verified working** |
+| Modem (5G/LTE/UMTS) | `ModemManager` detects `/org/freedesktop/ModemManager1/Modem/0` (`MPSS.HI.4.3.c2`, `qrtr0` + `rmnet_ipa0`); `sim-missing` (no SIM inserted during test) | **Detected (untested with SIM)** |
+| Sensors | `hexagonrpcd` + `iio-sensor-proxy`; live accelerometer, ambient light (`192 -> 65 lux`), compass (`47.8° -> 47.3°`) | **Verified working** |
+| Battery & Charging | `qcom-battmgr-bat` (`Charging`, `99%`, `4.46V`), `qcom-battmgr-usb` (`online=1`, `4.94V`); harmless dmesg `0x13` payload-length warning from Xiaomi ADSP | **Verified working** |
+| USB Networking & SSH | `cdc_ncm` gadget (`172.16.42.1`), SSH & SCP working | **Verified working** |
+| Remoteprocs | All 4 (`modem`, `adsp`, `wpss`, `cdsp`) `running` | **Verified working** |
+| Flash LED / SDHCI | `/sys/class/leds/white:flash` (`max=255`), `mmc2` (`8804000.mmc` ADMA 64-bit) registered | **Registered** |
+| Video decode/encode | `/dev/video0` (`qcom-iris-decoder`), `/dev/video1` (`qcom-iris-encoder`; upstream SM7325 encoder reset caveat remains) | **Registered (known encoder caveat)** |
+| Camera | `camss` ISP + `/dev/media0` + `/dev/video2..18` registered; `libcamera v0.8.0` reports `No sensor found for /dev/media0` | **WIP (sensor/PM8008 enablement needed)** |
