@@ -35,7 +35,13 @@ PREPARE = '''prepare() {
 \t# so `make` only needs to finish the link instead of recompiling.
 \tif [ -d "$startdir/.kernel-build-cache" ]; then
 \t\techo "Restoring cached kernel build tree ..."
-\t\tcp -a "$startdir/.kernel-build-cache/." ./
+\t\t# The cache contains relative symlinks (scripts/dtc/include-prefixes/*)
+\t\t# which cp -a cannot overlay onto the freshly extracted tree. Replace
+\t\t# the source tree wholesale with a tar stream instead; tar preserves
+\t\t# symlinks exactly and `make` then only finishes the link step.
+\t\trm -rf "$builddir"
+\t\tmkdir -p "$builddir"
+\t\ttar -C "$startdir/.kernel-build-cache" -cf - . | tar -C "$builddir" -xf -
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
 \t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
