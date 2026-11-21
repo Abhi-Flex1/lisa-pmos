@@ -33,6 +33,11 @@ PREPARE = '''prepare() {
 \t# Restore a previously compiled tree if available. This contains all
 \t# 4356 object files, the patched DTS/driver and the generated .config,
 \t# so `make` only needs to finish the link instead of recompiling.
+\tif [ -d "$startdir/../../.kernel-build-cache" ] && [ ! -d "$startdir/.kernel-build-cache" ]; then
+\t\t# Keep the large cache out of the aport dir so pmbootstrap doesn't
+\t\t# re-stage 4 GB on every build; link to it instead.
+\t\tln -s ../../.kernel-build-cache "$startdir/.kernel-build-cache"
+\tfi
 \tif [ -d "$startdir/.kernel-build-cache" ]; then
 \t\techo "Restoring cached kernel build tree ..."
 \t\t# The cache contains relative symlinks (scripts/dtc/include-prefixes/*)
