@@ -420,3 +420,31 @@ Report: `/tmp/opencode/reports/fingerprint.md`.
   new libfprint driver (uncertain — the SPI block may be secure-world owned), or
   (B) TEE/QSEE trustlet extraction and reverse engineering (weeks of work,
   legally uncertain for redistribution). Not attempted in this session.
+
+## 13. Camera front-sensor integration (2026-11-21, pending verification)
+
+Research reports: `/tmp/opencode/reports/cameras.md`, `/tmp/opencode/reports/hw-inventory.md`.
+
+* Extracted and mounted the stock `vendor` partition (from `super.img`) read-only
+  at `/mnt/vendor-lisa`. Confirmed sensor modules `lisa_sunny_s5k3t2_front`,
+  `lisa_ofilm_s5kgw3_wide`, `lisa_ofilm_s5k5e9yx04_macro`, `lisa_ofilm_imx355_ultra`.
+* Added to `kernel/dts/sm7325-xiaomi-lisa.dts`:
+  * `cam_mclk0_default` (gpio64) and front reset (gpio20) pinctrl states;
+  * `port@0` / `csiphy0_ep` in `&camss`;
+  * S5K3T2 `camera@10` node on `&cci0_i2c0` (supplies vreg_l4p/l2p/l5p,
+    MCLK0, reset gpio20, orientation front, rotation 270, 4 lanes, 448 MHz).
+  * **The I2C address 0x10 is from the upstream binding example and is NOT yet
+    confirmed on lisa** — the value lives in the vendor `sensormodule*.bin` and
+    could not be extracted from its Chromatix binary format. If the sensor does
+    not probe, v4l2-async will block the whole CAMSS graph (including IMX355);
+    a `boot-safe.img` without this node has been prepared as a rollback.
+* Added the S5K3T2 v4 driver to the kernel build (`kernel/drivers/s5k3t2.c`,
+  `scripts/build.sh`, `scripts/patch-kernel-apkbuild.py`); verified it compiles
+  against 7.2.9.
+* Added `pmaports/temp/libcamera/s5k3t2.yaml` soft-IPA tuning (placeholder CCM)
+  and its APKBUILD entry. Note `pmaports/` is gitignored, so this is local-only.
+* Prepared `output/images/boot-all.img` (all changes) and `output/images/boot-safe.img`
+  (without the front camera node) for staged testing.
+
+Remaining: confirm the S5K3T2 I2C address on hardware, then write drivers for
+the 64MP S5KGW3 and 5MP S5K5E9 (no mainline drivers exist) with soft-IPA tuning.
