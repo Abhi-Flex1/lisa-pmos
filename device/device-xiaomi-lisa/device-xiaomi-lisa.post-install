@@ -12,9 +12,17 @@ if [ -f /etc/pulse/daemon.conf ]; then
 		echo 'default-sample-rate = 48000' >> /etc/pulse/daemon.conf
 	fi
 	if grep -q '^alternate-sample-rate' /etc/pulse/daemon.conf; then
-		sed -i 's/^alternate-sample-rate.*/alternate-sample-rate = 48000/' /etc/pulse/daemon.conf
+		sed -i 's/^alternate-sample-rate.*/alternate-sample-rate = 44100/' /etc/pulse/daemon.conf
 	else
-		echo 'alternate-sample-rate = 48000' >> /etc/pulse/daemon.conf
+		echo 'alternate-sample-rate = 44100' >> /etc/pulse/daemon.conf
+	fi
+	# 44.1 kHz UI/notification sounds are resampled to the 48 kHz hardware
+	# rate; speex-float-1 audibly degrades them, so use the high-quality
+	# soxr resampler (falls back gracefully if unavailable).
+	if grep -q '^resample-method' /etc/pulse/daemon.conf; then
+		sed -i 's/^resample-method.*/resample-method = soxr-vhq/' /etc/pulse/daemon.conf
+	else
+		echo 'resample-method = soxr-vhq' >> /etc/pulse/daemon.conf
 	fi
 fi
 exit 0

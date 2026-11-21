@@ -45,7 +45,6 @@ source="
 	modules-initfs
 	99-powerdevil-no-ddcutil.conf
 	99-pulseaudio-no-x11.conf
-	99-pulseaudio-resampler.conf
 	xiaomi-lisa-modules.conf
 	73-xiaomi-lisa-haptics.rules
 "
@@ -67,8 +66,6 @@ package() {
 		"$pkgdir/etc/systemd/user/plasma-powerdevil.service.d/99-no-ddcutil.conf"
 	install -Dm644 "$srcdir/99-pulseaudio-no-x11.conf" \
 		"$pkgdir/etc/systemd/user/app-pulseaudio@autostart.service.d/99-no-x11.conf"
-	install -Dm644 "$srcdir/99-pulseaudio-resampler.conf" \
-		"$pkgdir/etc/pulse/daemon.conf.d/99-lisa-resampler.conf"
 	install -Dm644 "$srcdir/xiaomi-lisa-modules.conf" \
 		"$pkgdir/etc/modules-load.d/xiaomi-lisa.conf"
 	install -Dm644 "$srcdir/73-xiaomi-lisa-haptics.rules" \
@@ -83,5 +80,4 @@ f89a78b103e29733307429f30e5b4dc9d12f59d93fd3eaa081d22bed8a297b80edd060d9590a2d88
 df648d97f0b1b8abdec93eef1ed8ff0c6766e96d1fe55d207d0fa6aed032ae6acd2b2751eb5cc1af2cc934e74d767cf82a76e12fcfcbf53b25358ab594cc69b2  xiaomi-lisa-modules.conf
 6a462c5aa29b400a57529b90fc11636858ae865258b75654930390a4c4f498fcfdc0aa242c8c39537d91133c594c4bbd3c70082cad60cae33b33a856504b8ba5  73-xiaomi-lisa-haptics.rules
 "
-e75ecacd4ecdc2a1e0d7389179a66a0264480693ddc0b54221c7f618a0127ca674129167a7d4d32925c5387c7d5799edac240fed8dfd2f48c6322ddd66d45467  99-pulseaudio-resampler.conf
 "
