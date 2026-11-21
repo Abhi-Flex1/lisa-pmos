@@ -1,7 +1,7 @@
 # Handoff — postmarketOS for Xiaomi 11 Lite 5G NE (`xiaomi-lisa`)
 
 Status as of 2026-11-21. This repository is the working port tree.
-It was forked from `Abhi-Flex1/postmarket-lisa` and contains all work done since.
+The upstream source repo was `Abhi-Flex1/postmarket-lisa` (now deleted); this repository is the maintained port.
 
 ## TL;DR
 

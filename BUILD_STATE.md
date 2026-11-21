@@ -1,6 +1,6 @@
 # Build state / resume notes
 
-GitHub repo: https://github.com/Abhi-Flex1/lisa-pmos-mainline
+GitHub repo: https://github.com/Abhi-Flex1/lisa-pmos
 
 ## What is saved on disk (survives shutdown)
 
