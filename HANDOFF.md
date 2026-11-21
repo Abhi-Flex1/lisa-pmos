@@ -1,17 +1,18 @@
 # Handoff — postmarketOS for Xiaomi 11 Lite 5G NE (`xiaomi-lisa`)
 
-Status as of 2026-11-20 (late night). This repository is the working port tree.
+Status as of 2026-11-21. This repository is the working port tree.
 It was forked from `Abhi-Flex1/postmarket-lisa` and contains all work done since.
 
 ## TL;DR
 
-* **Mainline Linux 7.2.9 (`linux-postmarketos-qcom-sc7280`) boots on real `xiaomi-lisa` hardware!**
-  Live verification over USB (`18d1:d001`, `172.16.42.1` CDC NCM + `/dev/ttyACM0`) confirmed:
-  * **Display**: `msm` DPU (`0x70020000`) + `panel-csot-vtdr6130` (`card1-DSI-1: connected`, `renderD128`, `fb0: msmdrmfb`, `buffyboard` active)
-  * **Touchscreen**: `Goodix Berlin Capacitive TouchScreen` (`goodix_berlin_spi`)
-  * **Buttons & UFS**: `pmic_pwrkey`, `pmic_resin`, `gpio-keys`, `super -> sda20`, `userdata -> sda33`
-* **Fresh Plasma Mobile images are built in `output/images/`** (`boot.img`, `dtbo.img`, `xiaomi-lisa.img`) with all discovered fixes included (`header_version=0`, `append_dtb=true`, `base=0x00000000`, `earlycon`, zeroed `dtbo.img`, `linux-firmware-ath11k`, `hexagonrpcd`, `mkbootimg`, fixed UCM2).
-* Next step when physically at the phone: hold **Power + Volume Down** to enter fastboot and run `./scripts/flash.sh`, then verify userspace subsystems with `./scripts/device-report.sh ssh`.
+* **Full postmarketOS (KDE Plasma Mobile + systemd-edge, Linux 7.2.9) is booted and running on real `xiaomi-lisa` hardware!**
+  Live verification on the connected phone (`172.16.42.1`, PIN/password `147147`) confirmed:
+  * **Display & Backlight**: Auto-wakes on boot straight into Plasma Mobile (`1080x2400` 90Hz/60Hz DSC OLED, `brightness=1500 actual_brightness=1500`, dynamic brightness working, OOBE completed)
+  * **Touchscreen & Keys**: `Goodix Berlin Capacitive TouchScreen`, power & volume keys
+  * **Audio**: TFA9873 stereo speakers (`card 0: lisa`), `PulseAudio 17.0` auto-starts with `alsa_output.platform-sound.HiFi__Speaker__sink`, audible playback confirmed
+  * **Wi-Fi & Bluetooth**: WCN6750 `wlan0` connected to Wi-Fi with internet access (`ping 1.1.1.1`), Bluetooth controller powers on & scans
+  * **GPU, Sensors, Modem, Battery**: Adreno 642L (`GMU v3.1.10`), live accelerometer/ALS/compass (`iio-sensor-proxy`), `ModemManager` detects `qrtr0` + `rmnet_ipa0` (no SIM tested yet), `qcom-battmgr` battery & USB charging
+  * **Remaining WIP**: Camera (`libcamera` reports `No sensor found for /dev/media0` — sensor/PM8008 enablement still needed) and upstream SM7325 Iris video encoder reset caveat.
 
 ## Repository layout
 
@@ -61,16 +62,11 @@ STATUS.md                      detailed evidence-based status log
 8. **Disk quota**: this host has a ~100 GB per-user quota; large ROM/EDL
    downloads caused "Disk quota exceeded" build failures. Keep temp files small.
 
-## What remains to finish full userspace bring-up
+## Remaining follow-up work (optional / upstreaming)
 
-1. Put the phone in fastboot (Power + Volume Down) and run `./scripts/flash.sh`
-   (flashes zeroed `dtbo_a/b`, disabled `vbmeta_a/b`, header-v0 `boot_a/b`, and
-   the Plasma Mobile rootfs `output/images/xiaomi-lisa.img` to `userdata`).
-2. After reboot into Plasma Mobile, verify USB networking / SSH (`ssh user@172.16.42.1`,
-   password `147147`) and run `./scripts/device-report.sh ssh`.
-3. Verify each userspace subsystem (Plasma Mobile Wayland session, Wi-Fi via `ath11k`,
-   Bluetooth, TFA9873 speaker audio + UCM2, ModemManager, battery/charging, camera)
-   and update `STATUS.md`.
+1. Test cellular voice/data with a physical SIM card inserted (`ModemManager` already detects `qrtr0` + `rmnet_ipa0`).
+2. Camera sensor bring-up (`pm8008` regulators + `s5k5e9` / main sensor binding in `sm7325-xiaomi-lisa.dts` + `libcamera` tuning).
+3. Upstream `sm7325-xiaomi-lisa.dts`, `panel-csot-vtdr6130.c`, and the `xiaomi,lisa-sndcard` patch to `sc7280-mainline` / mainline Linux and open a pmaports MR.
 
 ## Reference material included
 

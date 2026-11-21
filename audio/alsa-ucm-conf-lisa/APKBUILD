@@ -2,7 +2,7 @@
 # Reference: <https://postmarketos.org/devicepkg>
 pkgname=alsa-ucm-conf-lisa
 pkgver=1
-pkgrel=2
+pkgrel=3
 pkgdesc="ALSA UCM2 profiles for Xiaomi 11 Lite 5G NE (lisa)"
 url="https://github.com/mainlining/alsa-ucm-conf"
 # aarch64 (not noarch): sc7280-mainline's alsa-ucm-conf-qcom-sc7280 is
@@ -31,5 +31,5 @@ package() {
 
 sha512sums="
 a3789d5d5af798b34793ad256fcbdd1d3a208169818b0c4333e451b99facacbfe673fc9866f906a3f7f0ff0e85180bb15ad574c3ddd0e4afb0436aad31ed67c4  lisa.conf
-a0be955d0d325c8233895a2e4a8bd72726b2d21ddce4e98c9068c7a547c33f541216eb448e00d7e81038646f432a4f291802f436a16ed582a8677226fe90633c  HiFi.conf
+34347c3d066016afde4bf28534b580612771fa87c5aa1cfe9da5c1695c11519a281c8eea59c7fb8ad5d3566aade7930cb1a4c53a81ce8379cacc544234b274fa  HiFi.conf
 "

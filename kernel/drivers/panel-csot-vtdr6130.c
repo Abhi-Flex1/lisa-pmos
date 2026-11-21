@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+ * Panel driver for the Xiaomi 11 Lite 5G NE (lisa) 1080x2400 90Hz/60Hz
+ * DSC command-mode AMOLED panel (Tianma k9d_36_02_0a init sequence,
+ * compatible "csot,vtdr6130").
  * Generated with linux-mdss-dsi-panel-driver-generator from vendor device tree:
  * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  * Copyright (c) 2025, Jens Reidel <adrian@travitia.xyz>
@@ -47,7 +50,7 @@ static void csot_vtdr6130_reset(struct csot_vtdr6130 *ctx)
 	gpiod_set_value_cansleep(ctx->reset_gpio, 1);
 	usleep_range(1000, 2000);
 	gpiod_set_value_cansleep(ctx->reset_gpio, 0);
-	usleep_range(11000, 12000);
+	msleep(150);
 }
 
 static int csot_vtdr6130_on(struct csot_vtdr6130 *ctx)
@@ -61,7 +64,7 @@ static int csot_vtdr6130_on(struct csot_vtdr6130 *ctx)
 				     0x00, 0x30, 0x00, 0x01);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb2, 0x58);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x6f, 0x02);
-	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb2, 0x0c, 0x0c);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xb2, 0x12, 0x12);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xbe, 0x0e, 0x0b, 0x14, 0x13);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x6f, 0x05);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xbe, 0x8a);
@@ -192,7 +195,7 @@ static int csot_vtdr6130_on(struct csot_vtdr6130 *ctx)
 				     0xc2, 0x00, 0x03, 0x1c, 0x01, 0x7e, 0x00,
 				     0x0f, 0x08, 0xbb, 0x04, 0x3d, 0x10, 0xf0);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x03, 0x01);
-	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x51, 0x00, 0x00, 0x00, 0x00);
+	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0x51, 0x05, 0xff, 0x00, 0x00);
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, MIPI_DCS_WRITE_CONTROL_DISPLAY,
 				     0x20);
 	mipi_dsi_dcs_set_tear_on_multi(&dsi_ctx, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
@@ -242,9 +245,9 @@ static int csot_vtdr6130_on(struct csot_vtdr6130 *ctx)
 	mipi_dsi_dcs_write_seq_multi(&dsi_ctx, 0xc3, 0x94, 0x01, 0x97, 0xd0,
 				     0x22, 0x02, 0x00);
 	mipi_dsi_dcs_exit_sleep_mode_multi(&dsi_ctx);
-	mipi_dsi_msleep(&dsi_ctx, 50);
+	mipi_dsi_msleep(&dsi_ctx, 120);
 	mipi_dsi_dcs_set_display_on_multi(&dsi_ctx);
-	mipi_dsi_usleep_range(&dsi_ctx, 16000, 17000);
+	mipi_dsi_msleep(&dsi_ctx, 20);
 
 	return dsi_ctx.accum_err;
 }
@@ -256,9 +259,9 @@ static int csot_vtdr6130_disable(struct drm_panel *panel)
 	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
 
 	mipi_dsi_dcs_set_display_off_multi(&dsi_ctx);
-	mipi_dsi_usleep_range(&dsi_ctx, 20000, 21000);
+	mipi_dsi_msleep(&dsi_ctx, 20);
 	mipi_dsi_dcs_enter_sleep_mode_multi(&dsi_ctx);
-	mipi_dsi_usleep_range(&dsi_ctx, 80000, 81000);
+	mipi_dsi_msleep(&dsi_ctx, 120);
 
 	return dsi_ctx.accum_err;
 }
@@ -266,8 +269,6 @@ static int csot_vtdr6130_disable(struct drm_panel *panel)
 static int csot_vtdr6130_prepare(struct drm_panel *panel)
 {
 	struct csot_vtdr6130 *ctx = to_csot_vtdr6130(panel);
-	struct drm_dsc_picture_parameter_set pps;
-	struct mipi_dsi_multi_context dsi_ctx = { .dsi = ctx->dsi };
 	int ret;
 
 	ret = regulator_bulk_enable(ARRAY_SIZE(csot_vtdr6130_supplies),
@@ -275,31 +276,65 @@ static int csot_vtdr6130_prepare(struct drm_panel *panel)
 	if (ret < 0)
 		return ret;
 
+	msleep(10);
 	csot_vtdr6130_reset(ctx);
+
+	return 0;
+}
+
+static int csot_vtdr6130_enable(struct drm_panel *panel)
+{
+	struct csot_vtdr6130 *ctx = to_csot_vtdr6130(panel);
+	struct mipi_dsi_device *dsi = ctx->dsi;
+	struct drm_dsc_picture_parameter_set pps;
+	struct mipi_dsi_multi_context dsi_ctx = { .dsi = dsi };
+	u8 pwr_after = 0;
+	int ret;
 
 	ret = csot_vtdr6130_on(ctx);
 	if (ret < 0) {
-		gpiod_set_value_cansleep(ctx->reset_gpio, 1);
-		goto err;
+		dev_err(&dsi->dev, "Failed to initialize panel: %d\n", ret);
+		return ret;
 	}
 
 	drm_dsc_pps_payload_pack(&pps, &ctx->dsc);
 	mipi_dsi_picture_parameter_set_multi(&dsi_ctx, &pps);
 	mipi_dsi_compression_mode_ext_multi(&dsi_ctx, true,
 					    MIPI_DSI_COMPRESSION_DSC, 0);
-
 	mipi_dsi_msleep(&dsi_ctx, 28);
 
-	if (dsi_ctx.accum_err < 0) {
-		ret = dsi_ctx.accum_err;
-		goto err;
+	if (dsi_ctx.accum_err < 0)
+		return dsi_ctx.accum_err;
+
+	mipi_dsi_dcs_read(dsi, MIPI_DCS_GET_POWER_MODE, &pwr_after, 1);
+	if ((pwr_after & 0x14) != 0x14) {
+		u8 te = 0x00, ctrl = 0x20;
+		u8 bl[4] = { 0x07, 0xff, 0x00, 0x00 };
+		struct mipi_dsi_multi_context retry_ctx = { .dsi = dsi };
+
+		mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_TEAR_ON, &te, 1);
+		mipi_dsi_dcs_write(dsi, MIPI_DCS_WRITE_CONTROL_DISPLAY, &ctrl, 1);
+		mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS, bl, sizeof(bl));
+		mipi_dsi_dcs_exit_sleep_mode(dsi);
+		msleep(120);
+		mipi_dsi_dcs_set_display_on(dsi);
+		msleep(20);
+
+		ret = csot_vtdr6130_on(ctx);
+		if (ret < 0)
+			return ret;
+
+		mipi_dsi_picture_parameter_set_multi(&retry_ctx, &pps);
+		mipi_dsi_compression_mode_ext_multi(&retry_ctx, true,
+						    MIPI_DSI_COMPRESSION_DSC, 0);
+		mipi_dsi_msleep(&retry_ctx, 28);
+		if (retry_ctx.accum_err < 0)
+			return retry_ctx.accum_err;
+
+		mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS, bl, sizeof(bl));
 	}
 
-	return dsi_ctx.accum_err;
-err:
-	regulator_bulk_disable(ARRAY_SIZE(csot_vtdr6130_supplies),
-			       ctx->supplies);
-	return ret;
+	return 0;
 }
 
 static int csot_vtdr6130_unprepare(struct drm_panel *panel)
@@ -315,23 +350,23 @@ static int csot_vtdr6130_unprepare(struct drm_panel *panel)
 
 static const struct drm_display_mode csot_vtdr6130_modes[] = {
 	{
-		/* 90Hz mode */
+		/* 90Hz mode (vendor timing@1: vfp=4, vpw=4, vbp=8) */
 		.clock =
-			(1080 + 16 + 8 + 8) * (2400 + 1212 + 4 + 8) * 90 / 1000,
+			(1080 + 16 + 8 + 8) * (2400 + 4 + 4 + 8) * 90 / 1000,
 		.hdisplay = 1080,
 		.hsync_start = 1080 + 16,
 		.hsync_end = 1080 + 16 + 8,
 		.htotal = 1080 + 16 + 8 + 8,
 		.vdisplay = 2400,
-		.vsync_start = 2400 + 1212,
-		.vsync_end = 2400 + 1212 + 4,
-		.vtotal = 2400 + 1212 + 4 + 8,
+		.vsync_start = 2400 + 4,
+		.vsync_end = 2400 + 4 + 4,
+		.vtotal = 2400 + 4 + 4 + 8,
 		.width_mm = 68,
 		.height_mm = 152,
-		.type = DRM_MODE_TYPE_DRIVER,
+		.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
 	},
 	{
-		/* 60Hz mode */
+		/* 60Hz mode (vendor timing@0: vfp=1212, vpw=4, vbp=8) */
 		.clock =
 			(1080 + 16 + 8 + 8) * (2400 + 1212 + 4 + 8) * 60 / 1000,
 		.hdisplay = 1080,
@@ -363,8 +398,9 @@ static int csot_vtdr6130_get_modes(struct drm_panel *panel,
 
 static const struct drm_panel_funcs csot_vtdr6130_panel_funcs = {
 	.prepare = csot_vtdr6130_prepare,
-	.unprepare = csot_vtdr6130_unprepare,
+	.enable = csot_vtdr6130_enable,
 	.disable = csot_vtdr6130_disable,
+	.unprepare = csot_vtdr6130_unprepare,
 	.get_modes = csot_vtdr6130_get_modes,
 };
 
@@ -372,15 +408,18 @@ static int csot_vtdr6130_bl_update_status(struct backlight_device *bl)
 {
 	struct mipi_dsi_device *dsi = bl_get_data(bl);
 	u16 brightness = backlight_get_brightness(bl);
+	u8 payload[4] = {
+		(brightness >> 8) & 0xff,
+		brightness & 0xff,
+		0x00,
+		0x00,
+	};
 	int ret;
 
-	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
-
-	ret = mipi_dsi_dcs_set_display_brightness_large(dsi, brightness);
+	ret = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
+				 payload, sizeof(payload));
 	if (ret < 0)
 		return ret;
-
-	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
 	return 0;
 }
@@ -388,16 +427,12 @@ static int csot_vtdr6130_bl_update_status(struct backlight_device *bl)
 static int csot_vtdr6130_bl_get_brightness(struct backlight_device *bl)
 {
 	struct mipi_dsi_device *dsi = bl_get_data(bl);
-	u16 brightness;
+	u16 brightness = 0;
 	int ret;
-
-	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
 
 	ret = mipi_dsi_dcs_get_display_brightness_large(dsi, &brightness);
 	if (ret < 0)
 		return ret;
-
-	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
 	return brightness;
 }
@@ -451,7 +486,7 @@ static int csot_vtdr6130_probe(struct mipi_dsi_device *dsi)
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO_BURST |
-			  MIPI_DSI_CLOCK_NON_CONTINUOUS | MIPI_DSI_MODE_LPM;
+			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
 
 	ctx->panel.prepare_prev_first = true;
 
@@ -485,6 +520,11 @@ static int csot_vtdr6130_probe(struct mipi_dsi_device *dsi)
 static void csot_vtdr6130_remove(struct mipi_dsi_device *dsi)
 {
 	struct csot_vtdr6130 *ctx = mipi_dsi_get_drvdata(dsi);
+	int ret;
+
+	ret = mipi_dsi_detach(dsi);
+	if (ret < 0)
+		dev_err(&dsi->dev, "Failed to detach from DSI host: %d\n", ret);
 
 	drm_panel_remove(&ctx->panel);
 }

@@ -47,6 +47,9 @@ PREPARE = '''prepare() {
 \t\trm -rf "$builddir"
 \t\tmkdir -p "$builddir"
 \t\ttar -C "$startdir/.kernel-build-cache" -cf - . | tar -C "$builddir" -xf -
+\t\t# Always overlay the latest repo DTS and panel driver onto the cached tree.
+\t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
+\t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
 \t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
