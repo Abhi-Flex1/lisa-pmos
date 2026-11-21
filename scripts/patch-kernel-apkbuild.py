@@ -24,6 +24,7 @@ LISA_FILES = (
     "sm7325-xiaomi-lisa.dts",
     "panel-csot-vtdr6130.c",
     "aw8624.c",
+    "s5k3t2.c",
     "0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch",
 )
 
@@ -53,7 +54,12 @@ PREPARE = '''prepare() {
 \t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
 \t\tcp "$startdir/aw8624.c" drivers/input/misc/
 \t\tgrep -q 'aw8624.o' drivers/input/misc/Makefile || printf 'obj-m += aw8624.o\\n' >> drivers/input/misc/Makefile
+\t\tcp "$startdir/s5k3t2.c" drivers/media/i2c/
+\t\tgrep -q 's5k3t2.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
+\t\tgrep -q 'config VIDEO_S5K3T2' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
 \t\t./scripts/config --module VIDEO_IMX355
+\t\t./scripts/config --module VIDEO_S5K3T2
+\t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
 \t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
@@ -77,7 +83,11 @@ PREPARE = '''prepare() {
 \t\t./scripts/config --enable FB_SIMPLE
 \t\t./scripts/config --enable SYSFB_SIMPLEFB
 \t\t./scripts/config --enable DRM_SIMPLEDRM
+\t\tcp "$startdir/s5k3t2.c" drivers/media/i2c/
+\t\tprintf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
+\t\tprintf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
 \t\t./scripts/config --module VIDEO_IMX355
+\t\t./scripts/config --module VIDEO_S5K3T2
 \t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \tfi
 }'''

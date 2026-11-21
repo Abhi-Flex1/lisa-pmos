@@ -62,6 +62,7 @@ KERNEL_PKG_DIR="$PMAPORTS_DIR/device/community/linux-postmarketos-qcom-sc7280"
 cp "$REPO_ROOT/kernel/dts/sm7325-xiaomi-lisa.dts" "$KERNEL_PKG_DIR/"
 cp "$REPO_ROOT/kernel/drivers/panel-csot-vtdr6130.c" "$KERNEL_PKG_DIR/"
 cp "$REPO_ROOT/kernel/drivers/aw8624.c" "$KERNEL_PKG_DIR/"
+cp "$REPO_ROOT/kernel/drivers/s5k3t2.c" "$KERNEL_PKG_DIR/"
 cp "$REPO_ROOT/kernel/patches/0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch" "$KERNEL_PKG_DIR/"
 python3 "$SCRIPT_DIR/patch-kernel-apkbuild.py" "$KERNEL_PKG_DIR/APKBUILD" "$KERNEL_PKG_DIR"
 
