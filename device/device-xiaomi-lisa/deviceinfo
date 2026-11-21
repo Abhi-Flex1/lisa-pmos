@@ -34,6 +34,6 @@ deviceinfo_bootimg_dtb_second="false"
 deviceinfo_flash_pagesize="4096"
 # Android 12+ devices with vendor_boot (lisa ships Android 17) use boot
 # header v4; v3 images are rejected by the bootloader with "Load Error".
-deviceinfo_header_version="4"
+deviceinfo_header_version="3"
 deviceinfo_rootfs_image_sector_size="4096"
 deviceinfo_super_partitions="/dev/sda20 /dev/sda20"
