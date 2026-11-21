@@ -184,7 +184,41 @@ Extracted from `/home/abhi/Desktop/lisa_stock/lisa_stock.tgz`
 * Stock boot header version is **3** (header bytes at 0x28 = `03 00 00 00`),
   matching pmbootstrap's generated boot.img. So boot-header format was not
   the cause of the earlier failure.
-* Stock `vbmeta.img` has `Flags: 0` and AVB descriptors for boot/vendor_boot;
-  postmarketOS must flash a vbmeta with `--flags 2` (disable-verity) instead
-  of the flags=3 image used in earlier attempts. `scripts/flash.sh` now does
-  exactly that.
+## 7. Mainline Linux 7.2.9 boot achieved on hardware (2026-11-21)
+
+### Root cause of previous `Reason:BootLinux Fail` loops (from stock `abl.elf` / `LinuxLoader.efi`)
+
+Decompressing and disassembling the stock HyperOS `abl.elf` (`LinuxLoader.efi`) plus querying `fastboot oem fbreason` revealed the exact two blockers:
+
+1. **DTBO / Gunyah `hyp` overlay failure (`0x2a898` -> `0x171f4`)**:
+   Whenever `dtbo_a/b` starts with the valid DTBO magic (`0xd7b7ab1e`), `GetDtboNeeded()` returns true and `BootLinux()` unconditionally runs `ufdt_apply_overlay()` (including Gunyah `hyp` overlays), which fails on a mainline DTB without downstream `__symbols__`, returning `Reason:BootLinux Fail`. Zeroing `dtbo_a/b` causes `GetDtboNeeded()` to return false and bypass all DTBO/hyp overlays.
+2. **Header v2 vs Header v0 DTB offset (`0x17028` + `0x1740c`)**:
+   In the no-DTBO fallback path (`0x173f4` -> `0x17850`, `"Single appended DTB found"`), ABL computes `boot_img_buf + page_size + DtbOffset`. For header v2, `DtbOffset` already includes `+page_size` so ABL overshoots by 4096 bytes. For **header v0** (`deviceinfo_header_version="0"`) with **`deviceinfo_append_dtb="true"`**, **`deviceinfo_flash_offset_base="0x00000000"`** (matching stock `vendor_boot` offsets `kernel=0x8000`, `ramdisk=0x1000000`, `tags=0x100`), and **`earlycon`**, ABL hits `"Single appended DTB found"` and boots mainline Linux cleanly.
+
+### Live hardware verification from booted mainline kernel (`7.2.9 #6-postmarketos-qcom-sc7280`)
+
+Captured directly from the running postmarketOS initramfs shell over USB (`/dev/ttyACM0`, USB gadget `18d1:d001`, `Product: Xiaomi 11 Lite 5G NE / 11 LE`, `SerialNumber: postmarketOS`):
+
+```
+uname -a                                -> Linux (none) 7.2.9 #6-postmarketos-qcom-sc7280 SMP PREEMPT aarch64
+USB networking (cdc_ncm)                -> 172.16.42.1 up (ping RTT ~2.0 ms, DHCP assigns 172.16.42.2)
+/dev/dri/                               -> card1, renderD128
+/sys/class/drm/card1-DSI-1/status       -> connected
+dmesg (DRM/panel)                       -> dpu hardware revision:0x70020000; Initialized msm 1.13.0; fb0: msmdrmfb
+/sys/class/input/event*/device/name     -> pmic_pwrkey, pmic_resin, gpio-keys, Goodix Berlin Capacitive TouchScreen, buffyboard
+/dev/disk/by-partlabel/super            -> ../../sda20
+/dev/disk/by-partlabel/userdata         -> ../../sda33
+```
+
+### Rootfs/packaging fixes applied after live audit
+
+Before generating the final Plasma Mobile images (`output/images/`):
+
+* Updated `device/device-xiaomi-lisa/deviceinfo` to the hardware-verified boot config (`header_version="0"`, `append_dtb="true"`, `base="0x00000000"`, `earlycon console=tty0`, `dtbo` + `vbmeta` + `sparse`).
+* Added missing SM7325 runtime dependencies to `device/device-xiaomi-lisa/APKBUILD`: `linux-firmware-ath11k` (WCN6750 Wi-Fi firmware, previously absent from `/lib/firmware/`), `hexagonrpcd>=0.3.2-r3` (ADSP/CDSP/sensors FastRPC), `mkbootimg` (on-device `mkinitfs` updates), and packaged a zeroed `/boot/dtbo.img`.
+* Removed the duplicate conflicting `Earpiece` entry on `hw:${CardId},0` from `audio/alsa-ucm-conf-lisa/HiFi.conf`.
+* Updated `scripts/flash.sh` to flash zeroed `dtbo_a/b`, disabled `vbmeta_a/b`, header-v0 `boot_a/b`, and `userdata`, and fixed `scripts/build.sh` directory cleanup (`rm -rf "$IMAGES_DIR"/*`).
+
+### Remaining on-device step
+
+Flash the freshly built Plasma Mobile rootfs + boot image via `./scripts/flash.sh` once the device is put into fastboot (Power + Volume Down), then run `./scripts/device-report.sh ssh` over `172.16.42.1` to verify full userspace subsystems (Plasma Mobile UI, Wi-Fi, Bluetooth, audio, modem, battery, camera).

@@ -4,7 +4,7 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=3
+pkgrel=4
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -21,9 +21,12 @@ depends="
 	firmware-xiaomi-lisa-vpu
 	firmware-xiaomi-lisa-wpss
 	firmware-qcom-adreno-a660
+	hexagonrpcd>=0.3.2-r3
+	linux-firmware-ath11k
 	linux-firmware-qca
 	linux-postmarketos-qcom-sc7280
 	make-dynpart-mappings
+	mkbootimg
 	android-tools
 	postmarketos-base
 	soc-qcom
@@ -39,13 +42,20 @@ source="
 
 build() {
 	devicepkg_build $startdir $pkgname
+
+	# Zeroed dtbo.img causes Xiaomi lisa's ABL GetDtboNeeded() to return false,
+	# bypassing Gunyah hyp DTBO ufdt_apply_overlay (which fails on mainline DTBs)
+	# and booting directly via the single-appended-DTB path.
+	dd if=/dev/zero of="$srcdir/dtbo.img" bs=16777216 count=1
 }
 
 package() {
 	devicepkg_package $startdir $pkgname
+
+	install -Dm644 "$srcdir/dtbo.img" "$pkgdir/boot/dtbo.img"
 }
 
 sha512sums="
-3eb2d5bd75f1c2de10438e0606c11f5c7fcba88ecdab1d800c6253172e5cf97b689f253b57911ee1eff3e9567a918f5ed050d68901f6705fa8dbf76cd0258342  deviceinfo
+badcc19e27927830e918523cdc7c2f230644a43b9be3a9a7abe1fab7f0dd1d2ed70d290158c3e2c7511adb770b97fa013323594f81ebcd8351911a8aa8bd3462  deviceinfo
 a6e4bc191e48d97ed6ee0607a2873639bb51d75843ee1fc9ac82364cba059ba722b3895dd9b0e5a01a7014d39578aadb0cc4e7befc0d4403dba4a15edeb60ce7  modules-initfs
 "

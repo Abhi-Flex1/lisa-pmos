@@ -79,13 +79,12 @@ Only after a successful test boot, and only if you accept that this overwrites
 
 The script asks for confirmation and flashes:
 
-* `boot_a` / `boot_b` with the built `boot.img`
-* `vendor_boot_a` / `vendor_boot_b` if a `vendor_boot.img` was exported
-* `userdata` with the generated rootfs image
+* `dtbo_a` / `dtbo_b` with the zeroed `dtbo.img` (required so Xiaomi's ABL bypasses stock Gunyah/Android DTBO overlays)
+* `vbmeta_a` / `vbmeta_b` with AVB verification disabled (`--flags 2`)
+* `boot_a` / `boot_b` with the built header-v0 `boot.img` (appended DTB + `base=0x00000000` + `earlycon`)
+* `userdata` with the generated rootfs image (`xiaomi-lisa.img`)
 * if you are recovering from a broken stock install,
-  `./scripts/flash_and_boot_recovery.sh` restores known-good LineageOS
-  vbmeta/dtbo/vendor_boot/boot images from `output/images/` (you must supply
-  those files yourself).
+  `./scripts/flash_and_boot_recovery.sh` restores known-good images from `output/images/` (or flash the stock HyperOS fastboot ROM).
 
 ## 5. First boot into Plasma Mobile
 

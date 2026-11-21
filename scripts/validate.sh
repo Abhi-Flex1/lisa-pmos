@@ -47,11 +47,22 @@ for kv in \
     'deviceinfo_codename="xiaomi-lisa"' \
     'deviceinfo_arch="aarch64"' \
     'deviceinfo_dtb="qcom/sm7325-xiaomi-lisa"' \
-    'deviceinfo_append_dtb="false"' \
+    'deviceinfo_append_dtb="true"' \
+    'deviceinfo_header_version="0"' \
+    'deviceinfo_flash_offset_base="0x00000000"' \
+    'deviceinfo_kernel_cmdline="earlycon console=tty0"' \
+    'deviceinfo_flash_fastboot_partition_dtbo="dtbo"' \
     'deviceinfo_drm="true"' \
     'deviceinfo_flash_method="fastboot"' \
     'deviceinfo_super_partitions="/dev/sda20 /dev/sda20"'; do
     if grep -Fxq "$kv" "$DI"; then pass "deviceinfo: $kv"; else fail "deviceinfo: $kv"; fi
+done
+for dep in 'linux-firmware-ath11k' 'hexagonrpcd>=0.3.2-r3' 'mkbootimg'; do
+    if grep -Fq "$dep" "$REPO_ROOT/device/device-xiaomi-lisa/APKBUILD"; then
+        pass "device APKBUILD depends on $dep"
+    else
+        fail "device APKBUILD missing $dep"
+    fi
 done
 
 echo "==> Firmware manifest coverage"
