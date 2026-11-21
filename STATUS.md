@@ -448,3 +448,49 @@ Research reports: `/tmp/opencode/reports/cameras.md`, `/tmp/opencode/reports/hw-
 
 Remaining: confirm the S5K3T2 I2C address on hardware, then write drivers for
 the 64MP S5KGW3 and 5MP S5K5E9 (no mainline drivers exist) with soft-IPA tuning.
+
+## 14. Final state of this session (2026-11-21 late)
+
+### Flashed and verified working
+* `output/images/boot-verified.img` (built with mkbootimg from the original
+  components + final DTB) was flashed to **boot_a and boot_b** and rebooted.
+* IMX355 camera works; `cam -l` lists `Internal back camera`, `Rotation = 90`.
+* Microphone capture: `alsa_input.platform-sound.HiFi__Mic__source` appears in
+  PulseAudio; `parecord` produced a valid WAV with RMS 5425 while speaking.
+* Speaker playback unchanged (`alsa_output.platform-sound.HiFi__Speaker__sink`).
+* Xwayland starts; plasma-camera works with `DISPLAY=:0`.
+
+### Critical debugging findings
+* Byte-patching a boot.img is NOT safe: the 20-byte header digest at offset 576
+  must be regenerated. Always rebuild with `unpack_bootimg --format=mkbootimg`
+  + `mkbootimg` using the exact original arguments (verified: rebuilding with
+  the original DTB reproduces boot.img byte-for-byte).
+* Adding the S5K3T2 DTS node without its driver loaded blocks v4l2-async, which
+  leaves IMX355 with 0 links and removes ALL cameras from libcamera. The node
+  was therefore removed from the final DTB; front-camera driver source is kept
+  in the repo but inactive until the I2C address is confirmed.
+* The fingerprint `vreg`/platform/spi-gpio DTS nodes hard-hang early boot
+  (stuck at penguin console) — they were removed. The REE bit-bang path is
+  unusable because QUP14/GPIO56-59 are TrustZone-owned.
+* Audio capture needed all three LPASS macros enabled (VA provides `fsgen` for
+  RX/TX; RX provides `iface` for swr0) and the v9 widget names
+  (`TX SWR_ADC0..3`); with those, the sound card probes with 3 PCM devices.
+
+### Audio-quality note (pre-existing, reported by user)
+PulseAudio was resampling 44.1 kHz system sounds with `speex-float-1` while
+48 kHz YouTube audio is copied. A user-level `~/.config/pulse/daemon.conf`
+with `resample-method = soxr-vhq` was applied live (revert by deleting it).
+
+### Remaining work (not achievable in-session)
+1. **Fingerprint**: the stock `fingerprint.fpc.so` is a QSEE/TEE-only HAL
+   (TA name almost certainly `fpclisa`); the signed TA is absent from the
+   supplied ROM and from every exposed partition (checked vendor/mi_ext/cust/
+   persist/tz). REE imaging hard-hangs the SoC. Needs EDL dump of the hidden
+   firmware partition + TA protocol RE (see
+   `/tmp/opencode/reports/fingerprint-implementation.md`).
+2. **Main 64MP S5KGW3 and macro 5MP S5K5E9**: no mainline V4L2 drivers exist;
+   require new drivers from vendor register tables + soft-IPA tuning.
+3. **Front 20MP S5K3T2**: driver compiles and is in the kernel build, but its
+   I2C address on lisa is still unconfirmed (vendor Chromatix binary not
+   decoded); enabling the node without a confirmed address breaks IMX355.
+4. **NFC/IR/GNSS**: hardware identified; need kernel config/userspace work.
