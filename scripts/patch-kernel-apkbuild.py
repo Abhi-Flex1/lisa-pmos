@@ -25,6 +25,7 @@ LISA_FILES = (
     "panel-csot-vtdr6130.c",
     "aw8624.c",
     "s5k3t2.c",
+    "fpc1020.c",
     "0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch",
 )
 
@@ -58,7 +59,12 @@ PREPARE = '''prepare() {
 \t\tgrep -q 's5k3t2.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
 \t\tgrep -q 'config VIDEO_S5K3T2' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
 \t\t./scripts/config --module VIDEO_IMX355
+\t\tcp "$startdir/fpc1020.c" drivers/input/misc/
+\t\tgrep -q 'fpc1020.o' drivers/input/misc/Makefile || printf 'obj-m += fpc1020.o\\n' >> drivers/input/misc/Makefile
 \t\t./scripts/config --module VIDEO_S5K3T2
+\t\t./scripts/config --module SPI_FPC1020
+\t\t./scripts/config --module SPI_GPIO
+\t\t./scripts/config --module SPI_BITBANG
 \t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
@@ -87,7 +93,12 @@ PREPARE = '''prepare() {
 \t\tprintf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
 \t\tprintf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
 \t\t./scripts/config --module VIDEO_IMX355
+\t\tcp "$startdir/fpc1020.c" drivers/input/misc/
+\t\tprintf 'obj-m += fpc1020.o\\n' >> drivers/input/misc/Makefile
 \t\t./scripts/config --module VIDEO_S5K3T2
+\t\t./scripts/config --module SPI_FPC1020
+\t\t./scripts/config --module SPI_GPIO
+\t\t./scripts/config --module SPI_BITBANG
 \t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \tfi
 }'''
