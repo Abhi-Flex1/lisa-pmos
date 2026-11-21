@@ -8,11 +8,13 @@ It was forked from `Abhi-Flex1/postmarket-lisa` and contains all work done since
 * **Full postmarketOS (KDE Plasma Mobile + systemd-edge, Linux 7.2.9) is booted and running on real `xiaomi-lisa` hardware!**
   Live verification on the connected phone (`172.16.42.1`, PIN/password `147147`) confirmed:
   * **Display & Backlight**: Auto-wakes on boot straight into Plasma Mobile (`1080x2400` 90Hz/60Hz DSC OLED, `brightness=1500 actual_brightness=1500`, dynamic brightness working, OOBE completed)
-  * **Touchscreen & Keys**: `Goodix Berlin Capacitive TouchScreen`, power & volume keys
-  * **Audio**: TFA9873 stereo speakers (`card 0: lisa`), `PulseAudio 17.0` auto-starts with `alsa_output.platform-sound.HiFi__Speaker__sink`, audible playback confirmed
+  * **Touchscreen, Keys & PowerDevil**: `Goodix Berlin Capacitive TouchScreen`, power & volume keys (`POWERDEVIL_NO_DDCUTIL=1` fixes PowerDevil startup hang; `15 ms` debounce on Vol Up)
+  * **Audio**: TFA9873 stereo speakers (`card 0: lisa`), `PulseAudio 17.0` with `tsched=0`, `48000 Hz`, and XWayland-free autostart drop-in (`99-pulseaudio-no-x11.conf`), fixing browser/YouTube audio & volume key deadlocks
+  * **Haptics & Vibration**: Awinic AW8624 (`kernel/drivers/aw8624.c`, `i2c4 @ 0x5a`, chip ID `0x24`, `EV_FF`/`FF_RUMBLE`) integrated with `feedbackd` (`73-xiaomi-lisa-haptics.rules`)
+  * **Camera**: Rear ultrawide 8MP Sony IMX355 (`sony,imx355` @ `cci1_i2c1 0x1a` + `qcom-camss` `port@3`) detected by `libcamera v0.8.0` with SoftISP `imx355.yaml` and exposed as `Built-in Back Camera` in PipeWire/Plasma Camera
   * **Wi-Fi & Bluetooth**: WCN6750 `wlan0` connected to Wi-Fi with internet access (`ping 1.1.1.1`), Bluetooth controller powers on & scans
   * **GPU, Sensors, Modem, Battery**: Adreno 642L (`GMU v3.1.10`), live accelerometer/ALS/compass (`iio-sensor-proxy`), `ModemManager` detects `qrtr0` + `rmnet_ipa0` (no SIM tested yet), `qcom-battmgr` battery & USB charging
-  * **Remaining WIP**: Camera (`libcamera` reports `No sensor found for /dev/media0` — sensor/PM8008 enablement still needed) and upstream SM7325 Iris video encoder reset caveat.
+  * **Remaining WIP**: Additional camera sensors (main 64MP, front 20MP, macro `s5k5e9`) and upstream SM7325 Iris video encoder reset caveat.
 
 ## Repository layout
 

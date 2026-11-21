@@ -1,0 +1,20 @@
+#!/bin/sh
+# Qualcomm Q6AFE/Q6ASM (snd_soc_sm8250) requires interrupt-driven ALSA
+# scheduling (tsched=0) and 48 kHz playback to avoid PulseAudio ALSA
+# xrun/deadlock loops.
+if [ -f /etc/pulse/default.pa ]; then
+	sed -i 's/^load-module module-udev-detect$/load-module module-udev-detect tsched=0/' /etc/pulse/default.pa
+fi
+if [ -f /etc/pulse/daemon.conf ]; then
+	if grep -q '^default-sample-rate' /etc/pulse/daemon.conf; then
+		sed -i 's/^default-sample-rate.*/default-sample-rate = 48000/' /etc/pulse/daemon.conf
+	else
+		echo 'default-sample-rate = 48000' >> /etc/pulse/daemon.conf
+	fi
+	if grep -q '^alternate-sample-rate' /etc/pulse/daemon.conf; then
+		sed -i 's/^alternate-sample-rate.*/alternate-sample-rate = 48000/' /etc/pulse/daemon.conf
+	else
+		echo 'alternate-sample-rate = 48000' >> /etc/pulse/daemon.conf
+	fi
+fi
+exit 0
