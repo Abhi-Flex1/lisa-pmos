@@ -4,7 +4,7 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=10
+pkgrel=11
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -62,6 +62,7 @@ source="
 	81-libssc-xiaomi-lisa.rules
 	plasmamobilerc
 	lisa-power-tune.service
+	10-lisa-sensorspd.conf
 "
 
 build() {
@@ -109,6 +110,8 @@ package() {
 		"$pkgdir/etc/xdg/plasma-mobile/plasmamobilerc"
 	install -Dm644 "$srcdir/lisa-power-tune.service" \
 		"$pkgdir/usr/lib/systemd/system/lisa-power-tune.service"
+	install -Dm644 "$srcdir/10-lisa-sensorspd.conf" \
+		"$pkgdir/etc/systemd/system/iio-sensor-proxy.service.d/10-lisa-sensorspd.conf"
 }
 
 sha512sums="
@@ -127,8 +130,9 @@ cb4fd850345ece46ea2c5fe6afef5dac0ced026c3ecc34e0fd46458512942a8e42fd24316dd49a4c
 24f2aa7a6e8d64ad40863f4c03fc91c0e1a7d27b3dbe912908f68af5dd9e5d9a226e1889e71f281468538bc2816997d3e6790586f2f38b53592d3add27674677  50-lisa-input-perms.rules
 837b36a828fa4543bab6dcb82530381b73d59cbf5e0e5376e7d59c2c9aa7b99b49892c761d7f163c323e9008423791b3798d779b4db3f2800df68f9cb727f8dd  50-lisa.preset
 dd4e5f19dc5fba4103b1917f421cb8cd73a8d7c0efe31395fc91c90b3fb325d0beea414b742369f9dde1a08073bceececa247dda2c49b4fbc2d8d8f85d8ac82d  99-lisa-printk.conf
-793160ffd52324942e59edabb362061da58c24e67685f52643042da4085e898bc5c124e7501d4212efbfda1916fd1112a6957687b5666fe01da04f90bcd41d3b  xiaomi-lisa-preset.conf
+9408798489d2c7810f305a91e8780c2b5821c8517bda93520c12e33810d1469db39357ce07cd342267311dcd6f1d50d1306f0a826bca224905af519d48a1481e  xiaomi-lisa-preset.conf
 301a4d2a846c6c432988544af87041e66f9671689c5feae2fc59e3ba099d3eac90d34fc177add4ba2e047f523f9982007e1794982f1c94fa3c22eefc2e1d4010  81-libssc-xiaomi-lisa.rules
 ed4f8704005320c38fee39696bc41fea8d477308aa3a8ca8fc3f1768c90e4197ffd924506aaa06887f2189890f3d46a61a82a8787274dcd491f6b31e4678de8a  plasmamobilerc
 f8421848fa3e01b306d71278b0e4b7ae683da05df845af07e985fff81ef7dd6fb01942ad035b047e69beeff2ffba24c499be1c68da0dcf9e31237b189cc90454  lisa-power-tune.service
+f4b7fd732ccef289e9badc64f1731d86b77cc172fee9624dbeecdc13083e3827ab03e524ed38fdccfb3ff0e40fd6320e1a7ce258ea8bab40997f5828bdef07af  10-lisa-sensorspd.conf
 "
