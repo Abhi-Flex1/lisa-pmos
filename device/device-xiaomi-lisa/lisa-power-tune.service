@@ -1,0 +1,10 @@
+[Unit]
+Description=Xiaomi lisa power tuning and touch recovery
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'for f in /sys/devices/system/cpu/cpufreq/policy*/schedutil/rate_limit_us; do [ -w "$f" ] && echo 4000 > "$f"; done; for f in /sys/bus/i2c/devices/*/power/control /sys/bus/spi/devices/*/power/control; do [ -w "$f" ] && echo auto > "$f"; done; grep -q "Goodix Berlin" /proc/bus/input/devices || { modprobe -r goodix_berlin_spi 2>/dev/null; sleep 1; modprobe goodix_berlin_spi 2>/dev/null; }; true'
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,4 @@
 #!/bin/sh
-# Camera /dev/media*, /dev/video* and /dev/v4l-subdev* are root:video 0660.
 addgroup user video 2>/dev/null || true
 addgroup user input 2>/dev/null || true
 
@@ -9,24 +8,31 @@ if [ -f /etc/xdg/powerdevilrc ]; then
 		/home/user/.config/powerdevilrc 2>/dev/null || true
 fi
 
-systemctl enable lisa-regdomain.service 2>/dev/null || true
+if [ -f /etc/xdg/plasma-mobile/plasmamobilerc ]; then
+	install -d -o user -g user /home/user/.config/plasma-mobile 2>/dev/null || true
+	install -o user -g user -m 644 /etc/xdg/plasma-mobile/plasmamobilerc \
+		/home/user/.config/plasma-mobile/plasmamobilerc 2>/dev/null || true
+fi
 
-# Qualcomm Q6AFE/Q6ASM (snd_soc_sm8250) requires interrupt-driven ALSA
-# scheduling (tsched=0) and 48 kHz playback to avoid PulseAudio ALSA
-# xrun/deadlock loops.
+systemctl enable lisa-regdomain.service 2>/dev/null || true
+systemctl enable lisa-power-tune.service 2>/dev/null || true
+
 if [ -f /etc/pulse/default.pa ]; then
 	sed -i 's/^load-module module-udev-detect$/load-module module-udev-detect tsched=0/' /etc/pulse/default.pa
 fi
-if [ -f /etc/pulse/daemon.conf ]; then
-	if grep -q '^default-sample-rate' /etc/pulse/daemon.conf; then
-		sed -i 's/^default-sample-rate.*/default-sample-rate = 48000/' /etc/pulse/daemon.conf
+set_pulse_opt() {
+	key="$1"; val="$2"; f="/etc/pulse/daemon.conf"
+	[ -f "$f" ] || return 0
+	if grep -q "^${key}[[:space:]]*=" "$f"; then
+		sed -i "s/^${key}[[:space:]]*=.*/${key} = ${val}/" "$f"
 	else
-		echo 'default-sample-rate = 48000' >> /etc/pulse/daemon.conf
+		echo "${key} = ${val}" >> "$f"
 	fi
-	if grep -q '^alternate-sample-rate' /etc/pulse/daemon.conf; then
-		sed -i 's/^alternate-sample-rate.*/alternate-sample-rate = 48000/' /etc/pulse/daemon.conf
-	else
-		echo 'alternate-sample-rate = 48000' >> /etc/pulse/daemon.conf
-	fi
-fi
+}
+set_pulse_opt default-sample-rate 48000
+set_pulse_opt alternate-sample-rate 48000
+set_pulse_opt avoid-resampling no
+set_pulse_opt resample-method soxr-mq
+set_pulse_opt default-fragments 4
+set_pulse_opt default-fragment-size-msec 25
 exit 0

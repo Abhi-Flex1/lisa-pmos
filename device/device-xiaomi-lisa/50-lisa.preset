@@ -1,1 +1,2 @@
 enable lisa-regdomain.service
+enable lisa-power-tune.service

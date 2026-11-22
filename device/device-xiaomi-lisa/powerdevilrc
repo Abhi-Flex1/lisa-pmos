@@ -21,6 +21,8 @@ LockBeforeTurnOffDisplay=true
 [Battery][SuspendAndShutdown]
 PowerButtonAction=128
 PowerDownAction=8
+AutoSuspendAction=1
+AutoSuspendIdleTimeoutSec=180
 
 [LowBattery]
 [LowBattery][Display]
@@ -33,3 +35,5 @@ LockBeforeTurnOffDisplay=true
 [LowBattery][SuspendAndShutdown]
 PowerButtonAction=128
 PowerDownAction=8
+AutoSuspendAction=1
+AutoSuspendIdleTimeoutSec=120

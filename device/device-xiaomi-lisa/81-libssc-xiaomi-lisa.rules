@@ -1,0 +1,4 @@
+# Qualcomm SSC accelerometer on Xiaomi lisa (SM7325) reports an all-zero
+# firmware mount matrix; negate X, Y, Z to match Linux IIO orientation
+# (same convention as other SM7325/Xiaomi SSC devices).
+SUBSYSTEM=="misc", KERNEL=="fastrpc-*", ENV{ACCEL_MOUNT_MATRIX}+="-1, 0, 0; 0, -1, 0; 0, 0, -1"
