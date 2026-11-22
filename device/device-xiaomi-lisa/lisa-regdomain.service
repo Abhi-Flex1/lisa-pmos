@@ -1,0 +1,11 @@
+[Unit]
+Description=Set wireless regulatory domain for Xiaomi lisa
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec /usr/sbin/iw reg set "$(cat /etc/lisa-regdomain)"'
+
+[Install]
+WantedBy=multi-user.target

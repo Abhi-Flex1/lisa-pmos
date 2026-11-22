@@ -8,6 +8,8 @@ if [ -f /etc/xdg/powerdevilrc ]; then
 		/home/user/.config/powerdevilrc 2>/dev/null || true
 fi
 
+systemctl enable lisa-regdomain.service 2>/dev/null || true
+
 # Qualcomm Q6AFE/Q6ASM (snd_soc_sm8250) requires interrupt-driven ALSA
 # scheduling (tsched=0) and 48 kHz playback to avoid PulseAudio ALSA
 # xrun/deadlock loops.
