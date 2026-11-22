@@ -17,6 +17,9 @@ while IFS= read -r f; do
 done < <(find "$REPO_ROOT/scripts" "$REPO_ROOT/docker" -type f -name '*.sh' -print)
 check python3 -m py_compile "$SCRIPT_DIR/patch-kernel-apkbuild.py"
 check python3 -m py_compile "$SCRIPT_DIR/patch-boot-dtb-rotation.py"
+if [ -f "$REPO_ROOT/fingerprint/qseecom_probe.py" ]; then
+    check python3 -m py_compile "$REPO_ROOT/fingerprint/qseecom_probe.py"
+fi
 
 echo "==> APKBUILD checksums"
 check_aport() {
