@@ -3,7 +3,7 @@ maintainer="Robert Mader <robert.mader@collabora.com>"
 pkgname=libcamera
 _pkgver=0.8.0
 pkgver=9999$_pkgver
-pkgrel=2
+pkgrel=3
 pkgdesc="Linux camera framework"
 url="https://libcamera.org/"
 arch="all"
@@ -64,6 +64,7 @@ _tuning_files="
 source="https://gitlab.freedesktop.org/camera/libcamera/-/archive/v$_pkgver/libcamera-v$_pkgver.tar.gz
 	0001-libcamera-software_isp-Allow-limiting-output-sizes.patch
 	0002-libcamera-Add-quad-Bayer-CFA-layout-support.patch
+	0003-libcamera-lisa-friendly-camera-models.patch
 	qcam.desktop
 	$_tuning_files
 	"
@@ -172,6 +173,7 @@ sha512sums="
 21ada092a1944c3476e0a254fe82d2775d2eb833d931dd051bd551a9f12ae596b3cd57f3792335d4ad86479e2247d23056d30e2631aa620897d067002c88e060  libcamera-v0.8.0.tar.gz
 e255545cdc1d3d0e68fd40c504d2c2a24ec9a89de9e26842e05cc6046cf79615be87b0b9f80a3637b1f130c0404ff5e0f7df5136334b05c1d4e24e3290738223  0001-libcamera-software_isp-Allow-limiting-output-sizes.patch
 7918e3e2eed6ea6413936c30c88b752ba7c2da568c75236b2f5740e311b7b16fc6b4cc21413f4751af252843d0b98ad45ca41033e65686a9e9cdfa8d05f467c2  0002-libcamera-Add-quad-Bayer-CFA-layout-support.patch
+20cd81d62738168b5c1abc807a89d7a223b80fb67682f1eae91aa8418cf73762dff51524292098fa564b105731becf4b843126be250e93a1c46984f5631f3d47  0003-libcamera-lisa-friendly-camera-models.patch
 22167a4eceb6d1b40b0b7c45fdf116c71684f5340de7f767535cb8e160ad9d2ae0f00cb3d461f73a344520a48a4641cf46226841d78bee06bfbfd2a91337f754  qcam.desktop
 926933ed5aa6bc005471d8ddbbf49afaeb5034ac776c78bcba6655adc05b68be858923aac7887f8a8451a424113ed4d11c78856229a728abf031ebe747684e14  hi846.yaml
 ca4bc9d9bfa8e68ecc9f1aa32eb3fb35afb5002c7ad8636485d6345bd9c7cfcaca15b776087e0f7f48c2c9429621936dadb0ac3195433e5888303907cc0561d5  imx355.yaml

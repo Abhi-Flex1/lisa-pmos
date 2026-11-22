@@ -1,0 +1,23 @@
+--- a/src/libcamera/pipeline/simple/simple.cpp
++++ b/src/libcamera/pipeline/simple/simple.cpp
+@@ -667,6 +667,20 @@
+ 
+ 	properties_ = sensor_->properties();
+ 
++	/* Xiaomi lisa: expose user-facing camera names to applications. Keep the
++	 * sensor model (sensor_->model()) unchanged so IPA tuning file selection
++	 * still picks s5kgw3.yaml / s5k5e9.yaml / s5k3t2.yaml / imx355.yaml.
++	 */
++	const std::string sensorModel = sensor_->model();
++	if (sensorModel == "s5kgw3")
++		properties_.set(properties::Model, "Main Camera (64MP)");
++	else if (sensorModel == "s5k5e9")
++		properties_.set(properties::Model, "Macro Camera (5MP)");
++	else if (sensorModel == "s5k3t2")
++		properties_.set(properties::Model, "Front Camera (20MP)");
++	else if (sensorModel == "imx355")
++		properties_.set(properties::Model, "Ultrawide Camera (8MP)");
++
+ 	/* Find the first subdev that can generate a frame start signal, if any. */
+ 	frameStartEmitter_ = nullptr;
+ 	for (const Entity &entity : entities_) {
