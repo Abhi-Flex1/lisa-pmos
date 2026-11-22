@@ -4,6 +4,15 @@
 # report no cameras at all even though libcamera enumerates all four sensors.
 addgroup user video 2>/dev/null || true
 
+# PowerDevil generates desktop defaults on first boot on this device; force
+# the mobile profile so the power key locks/toggles the screen and the display
+# actually dims before it turns off.
+if [ -f /etc/xdg/powerdevilrc ]; then
+	install -d -o user -g user /home/user/.config 2>/dev/null || true
+	install -o user -g user -m 644 /etc/xdg/powerdevilrc \
+		/home/user/.config/powerdevilrc 2>/dev/null || true
+fi
+
 # Qualcomm Q6AFE/Q6ASM (snd_soc_sm8250) requires interrupt-driven ALSA
 # scheduling (tsched=0) and 48 kHz playback to avoid PulseAudio ALSA
 # xrun/deadlock loops.
