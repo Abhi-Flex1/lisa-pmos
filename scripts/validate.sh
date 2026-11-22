@@ -16,6 +16,7 @@ while IFS= read -r f; do
     check bash -n "$f"
 done < <(find "$REPO_ROOT/scripts" "$REPO_ROOT/docker" -type f -name '*.sh' -print)
 check python3 -m py_compile "$SCRIPT_DIR/patch-kernel-apkbuild.py"
+check python3 -m py_compile "$SCRIPT_DIR/patch-boot-dtb-rotation.py"
 
 echo "==> APKBUILD checksums"
 check_aport() {
@@ -40,6 +41,7 @@ check_aport() {
 check_aport "$REPO_ROOT/device/device-xiaomi-lisa" device-xiaomi-lisa
 check_aport "$REPO_ROOT/firmware/firmware-xiaomi-lisa" firmware-xiaomi-lisa
 check_aport "$REPO_ROOT/audio/alsa-ucm-conf-lisa" alsa-ucm-conf-lisa
+check_aport "$REPO_ROOT/camera/libcamera-lisa" libcamera-lisa
 
 echo "==> deviceinfo"
 DI="$REPO_ROOT/device/device-xiaomi-lisa/deviceinfo"
@@ -114,6 +116,11 @@ if grep -q 'UI="${1:-${UI:-plasma-mobile}}"' "$SCRIPT_DIR/build.sh"; then
     pass "default UI is plasma-mobile"
 else
     fail "default UI is not plasma-mobile"
+fi
+if grep -q 'camera/libcamera-lisa' "$SCRIPT_DIR/build.sh"; then
+    pass "build.sh stages the calibrated libcamera fork"
+else
+    fail "build.sh does not stage the calibrated libcamera fork"
 fi
 if grep -q 'pmbootstrap install .*--ui' "$SCRIPT_DIR/build.sh"; then
     fail "build.sh passes unsupported --ui to pmbootstrap install"

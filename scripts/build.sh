@@ -53,6 +53,15 @@ for pkg in device-xiaomi-lisa firmware-xiaomi-lisa alsa-ucm-conf-lisa; do
     cp -a "$src" "$PMAPORTS_DIR/device/testing/$pkg"
 done
 
+echo "==> Staging libcamera fork with calibrated lisa IPA tuning ..."
+# The calibrated s5kgw3/s5k5e9/s5k3t2/imx355 YAMLs and the quad-Bayer +
+# output-size patches are in the tracked camera/libcamera-lisa aport. It must
+# be staged into pmaports before every build, otherwise a fresh pmaports
+# checkout falls back to the stock aport and the camera names/tuning vanish.
+rm -rf "$PMAPORTS_DIR/temp/libcamera" "$PMAPORTS_DIR/main/libcamera"
+mkdir -p "$PMAPORTS_DIR/temp"
+cp -a "$REPO_ROOT/camera/libcamera-lisa" "$PMAPORTS_DIR/temp/libcamera"
+
 echo "==> Integrating kernel assets into linux-postmarketos-qcom-sc7280 ..."
 # Start from the pristine upstream APKBUILD on every run so the patch is
 # applied exactly once with the current assets/config flags.
