@@ -17,17 +17,14 @@ WORK="${1:-$(pwd)/.pmos_cache}"
 APK="$WORK/apk.static"
 REAL="$WORK/apk.static.real"
 
-[ -x "$REAL" ] || {
-    echo "apk.static.real not found in $WORK; nothing to patch"
-    exit 0
-}
-
 if head -n1 "$APK" 2>/dev/null | grep -q '^#!/bin/sh'; then
     echo "apk usrmerge workaround already installed"
     exit 0
 fi
 
-sudo mv "$APK" "$REAL"
+if [ ! -x "$REAL" ]; then
+    sudo mv "$APK" "$REAL"
+fi
 sudo tee "$APK" >/dev/null <<'WRAPPER'
 #!/bin/sh
 real="$(dirname "$0")/apk.static.real"
