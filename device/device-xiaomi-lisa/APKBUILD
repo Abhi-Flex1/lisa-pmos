@@ -10,6 +10,9 @@ license="MIT"
 arch="aarch64"
 options="!check !archcheck"
 install="$pkgname.post-install $pkgname.post-upgrade"
+# Xwayland is required: without it kwin_wayland's --xwayland fails and any
+# Qt app launched with DISPLAY=:0 (plasma-camera, krunner, ...) hangs forever
+# trying to connect to a non-existent X server.
 depends="
 	alsa-ucm-conf-qcom-sc7280
 	alsa-ucm-conf-lisa
@@ -36,9 +39,6 @@ depends="
 	soc-qcom-modem
 	soc-qcom-qbootctl
 	unl0kr-fbforcerefresh
-	# Xwayland is required: without it kwin_wayland's --xwayland fails and any
-	# Qt app launched with DISPLAY=:0 (plasma-camera, krunner, ...) hangs
-	# forever trying to connect to a non-existent X server.
 	xwayland
 "
 makedepends="devicepkg-dev"
