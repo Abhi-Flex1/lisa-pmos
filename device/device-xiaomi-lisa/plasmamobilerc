@@ -1,25 +1,25 @@
 [Panels][WhenOnBottom]
 navigationPanelLeftPadding=16
-navigationPanelRightPadding=16
+navigationPanelRightPadding=136
+statusBarHeight=134
+statusBarLeftPadding=16
+statusBarRightPadding=136
+
+[Panels][WhenOnTop]
+navigationPanelLeftPadding=16
+navigationPanelRightPadding=136
 statusBarHeight=134
 statusBarLeftPadding=16
 statusBarRightPadding=136
 
 [Panels][WhenOnRight]
-navigationPanelLeftPadding=16
+navigationPanelLeftPadding=136
 navigationPanelRightPadding=16
 statusBarHeight=96
 statusBarLeftPadding=136
 statusBarRightPadding=16
 
 [Panels][WhenOnLeft]
-navigationPanelLeftPadding=16
-navigationPanelRightPadding=16
-statusBarHeight=80
-statusBarLeftPadding=16
-statusBarRightPadding=16
-
-[Panels][WhenOnTop]
 navigationPanelLeftPadding=16
 navigationPanelRightPadding=16
 statusBarHeight=80
