@@ -3,6 +3,7 @@
 # Without this the user cannot open cameras, so plasma-camera and WirePlumber
 # report no cameras at all even though libcamera enumerates all four sensors.
 addgroup user video 2>/dev/null || true
+addgroup user input 2>/dev/null || true
 
 # PowerDevil generates desktop defaults on first boot on this device; force
 # the mobile profile so the power key locks/toggles the screen and the display

@@ -1,6 +1,7 @@
 #!/bin/sh
 # Camera /dev/media*, /dev/video* and /dev/v4l-subdev* are root:video 0660.
 addgroup user video 2>/dev/null || true
+addgroup user input 2>/dev/null || true
 
 if [ -f /etc/xdg/powerdevilrc ]; then
 	install -d -o user -g user /home/user/.config 2>/dev/null || true

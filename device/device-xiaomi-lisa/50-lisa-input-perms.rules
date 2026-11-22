@@ -1,0 +1,4 @@
+# Power and volume keys are input devices owned by root:input 0660. Without
+# this the graphical session never receives KEY_POWER / KEY_VOLUMEUP /
+# KEY_VOLUMEDOWN, so screen lock, screenshot chords and volume keys all fail.
+SUBSYSTEM=="input", GROUP="user", MODE="0660"
