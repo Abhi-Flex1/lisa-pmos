@@ -48,6 +48,22 @@ GitHub repo: https://github.com/Abhi-Flex1/lisa-pmos
   written to `boot_a`/`boot_b` directly over SSH with `dd` (no fastboot, no
   rootfs rewrite). DTB change takes effect on the next normal reboot.
 
+## Post-reboot verification (2026-11-22, after the DTB write)
+
+* Live DT: `s5k5e9 rotation = 90`, `s5kgw3 = 90`, `s5k3t2 = 270`.
+* `cam -p`: main `Rotation = 90`, macro `Rotation = 90`, front `Rotation = 270`.
+* `cam -c 1 --capture=5` completes at ~15 fps with the full 20 MP stream.
+* PipeWire Sources keep the friendly Main/Ultrawide/Macro/Front names.
+
+## GNSS finding
+
+No GNSS node exists in either our DTS or the stock DTB (checked 2026-11-22),
+`CONFIG_GNSS` is not set in the 7.2.9 config, and this kernel tree has no
+`gnss-qmi` driver. The `soc-qcom` aport's `modem-gnss.service` only configures
+a GNSS device via `qmicli`, so it cannot create `/dev/gnss*` on its own.
+Enabling GNSS needs a real driver/protocol port, not just a config toggle;
+no kernel rebuild was attempted for it.
+
 ## Do not delete
 
 `.pmos_cache`, `output/packages`, `/home/abhi/Desktop/lisa_stock/lisa_stock.tgz`
