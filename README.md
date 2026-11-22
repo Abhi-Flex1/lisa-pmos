@@ -33,7 +33,10 @@ pmaports/                      local pmaports checkout used by build.sh
 ```
 
 `plasma-mobile` is the default UI. You can pass another UI name, but Plasma
-Mobile is the one this port targets and validates.
+Mobile is the one this port targets and validates. GNOME Mobile is available as
+`./scripts/build.sh gnome-mobile` (it produces a separate rootfs image; a UI
+cannot be switched on an installed system without rebuilding/reflashing the
+rootfs).
 
 See [INSTALL.md](INSTALL.md) for prerequisites, detailed steps and flashing.
 
