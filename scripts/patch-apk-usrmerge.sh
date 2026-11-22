@@ -34,8 +34,8 @@ real="$(dirname "$0")/apk.static.real"
 out="$("$real" "$@" 2>&1)"
 rc=$?
 printf '%s\n' "$out"
-if { [ "$rc" -eq 2 ] || [ "$rc" -eq 3 ]; } && \
-   printf '%s' "$out" | grep -qE '[0-9]+ errors; .* in [0-9]+ packages'; then
+if { [ "$rc" -eq 1 ] || [ "$rc" -eq 2 ] || [ "$rc" -eq 3 ]; } && \
+   printf '%s' "$out" | grep -qE '[0-9]+ errors?; .* in [0-9]+ packages'; then
     echo "NOTE: ignoring known benign apk usrmerge duplicate-path errors" >&2
     printf '%s\n' "$out" >> "$(dirname "$0")/apk_masked_errors.log"
     exit 0
