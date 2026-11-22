@@ -41,7 +41,6 @@
 #define S5K3T2_AGAIN_MAX		16
 #define S5K3T2_AGAIN_STEP		1
 #define S5K3T2_AGAIN_DEFAULT		1
-#define S5K3T2_AGAIN_SHIFT		5
 
 #define S5K3T2_REG_VTS			CCI_REG16(0x0340)
 #define S5K3T2_VTS_MAX			0xffff
@@ -707,7 +706,7 @@ static int s5k3t2_set_ctrl(struct v4l2_ctrl *ctrl)
 	switch (ctrl->id) {
 	case V4L2_CID_ANALOGUE_GAIN:
 		ret = cci_write(s5k3t2->regmap, S5K3T2_REG_AGAIN,
-				ctrl->val << S5K3T2_AGAIN_SHIFT, NULL);
+				ctrl->val << 5, NULL);
 		break;
 	case V4L2_CID_EXPOSURE:
 		ret = cci_write(s5k3t2->regmap, S5K3T2_REG_EXPOSURE,

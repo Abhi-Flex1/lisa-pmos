@@ -25,7 +25,10 @@ LISA_FILES = (
     "panel-csot-vtdr6130.c",
     "aw8624.c",
     "s5k3t2.c",
-    "fpc1020.c",
+    "s5k5e9.c",
+    "s5kgw3.c",
+    "qcom_qseecom_mobile.c",
+    "qseecom_mobile.h",
     "0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch",
 )
 
@@ -43,64 +46,62 @@ PREPARE = '''prepare() {
 \tfi
 \tif [ -d "$startdir/.kernel-build-cache" ]; then
 \t\techo "Restoring cached kernel build tree ..."
-\t\t# The cache contains relative symlinks (scripts/dtc/include-prefixes/*)
-\t\t# which cp -a cannot overlay onto the freshly extracted tree. Replace
-\t\t# the source tree wholesale with a tar stream instead; tar preserves
-\t\t# symlinks exactly and `make` then only finishes the link step.
 \t\trm -rf "$builddir"
 \t\tmkdir -p "$builddir"
 \t\ttar -C "$startdir/.kernel-build-cache" -cf - . | tar -C "$builddir" -xf -
-\t\t# Always overlay the latest repo DTS and out-of-tree drivers onto the cached tree.
-\t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
-\t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
-\t\tcp "$startdir/aw8624.c" drivers/input/misc/
-\t\tgrep -q 'aw8624.o' drivers/input/misc/Makefile || printf 'obj-m += aw8624.o\\n' >> drivers/input/misc/Makefile
-\t\tcp "$startdir/s5k3t2.c" drivers/media/i2c/
-\t\tgrep -q 's5k3t2.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
-\t\tgrep -q 'config VIDEO_S5K3T2' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
-\t\t./scripts/config --module VIDEO_IMX355
-\t\tcp "$startdir/fpc1020.c" drivers/input/misc/
-\t\tgrep -q 'fpc1020.o' drivers/input/misc/Makefile || printf 'obj-m += fpc1020.o\\n' >> drivers/input/misc/Makefile
-\t\t./scripts/config --module VIDEO_S5K3T2
-\t\t./scripts/config --module SPI_FPC1020
-\t\t./scripts/config --module SPI_GPIO
-\t\t./scripts/config --module SPI_BITBANG
-\t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \telse
 \t\t# --- Xiaomi 11 Lite 5G NE (lisa) enablement ---
-\t\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
 \t\tprintf 'dtb-$(CONFIG_ARCH_QCOM) += sm7325-xiaomi-lisa.dtb\\n' \\
 \t\t\t>> arch/arm64/boot/dts/qcom/Makefile
-
-\t\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
-\t\tprintf 'obj-m += panel-csot-vtdr6130.o\\n' \\
-\t\t\t>> drivers/gpu/drm/panel/Makefile
-
-\t\tcp "$startdir/aw8624.c" drivers/input/misc/
-\t\tprintf 'obj-m += aw8624.o\\n' \\
-\t\t\t>> drivers/input/misc/Makefile
-
-\t\t# The machine driver needs the xiaomi,lisa-sndcard compatible string.
 \t\tpatch -p1 -i \\
 \t\t\t"$startdir/0001-ASoC-qcom-sm8250-Add-Xiaomi-Lisa-soundcard-compatible.patch"
-
-\t\t# Boot-time framebuffer and simpledrm fallback (splash / unl0kr / shell),
-\t\t# plus rear ultrawide IMX355 camera sensor module.
-\t\t./scripts/config --enable FB_SIMPLE
-\t\t./scripts/config --enable SYSFB_SIMPLEFB
-\t\t./scripts/config --enable DRM_SIMPLEDRM
-\t\tcp "$startdir/s5k3t2.c" drivers/media/i2c/
-\t\tprintf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
-\t\tprintf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
-\t\t./scripts/config --module VIDEO_IMX355
-\t\tcp "$startdir/fpc1020.c" drivers/input/misc/
-\t\tprintf 'obj-m += fpc1020.o\\n' >> drivers/input/misc/Makefile
-\t\t./scripts/config --module VIDEO_S5K3T2
-\t\t./scripts/config --module SPI_FPC1020
-\t\t./scripts/config --module SPI_GPIO
-\t\t./scripts/config --module SPI_BITBANG
-\t\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 \tfi
+
+\t# Always overlay the latest repo DTS and out-of-tree drivers.
+\tcp "$startdir/sm7325-xiaomi-lisa.dts" arch/arm64/boot/dts/qcom/
+\tcp "$startdir/panel-csot-vtdr6130.c" drivers/gpu/drm/panel/
+\tgrep -q 'panel-csot-vtdr6130.o' drivers/gpu/drm/panel/Makefile || printf 'obj-m += panel-csot-vtdr6130.o\\n' >> drivers/gpu/drm/panel/Makefile
+
+\tcp "$startdir/aw8624.c" drivers/input/misc/
+\tgrep -q 'aw8624.o' drivers/input/misc/Makefile || printf 'obj-m += aw8624.o\\n' >> drivers/input/misc/Makefile
+
+\tcp "$startdir/s5k3t2.c" drivers/media/i2c/
+\tcp "$startdir/s5k5e9.c" drivers/media/i2c/
+\tcp "$startdir/s5kgw3.c" drivers/media/i2c/
+\tgrep -q 's5k3t2.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5K3T2) += s5k3t2.o\\n' >> drivers/media/i2c/Makefile
+\tgrep -q 's5k5e9.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5K5E9) += s5k5e9.o\\n' >> drivers/media/i2c/Makefile
+\tgrep -q 's5kgw3.o' drivers/media/i2c/Makefile || printf 'obj-$(CONFIG_VIDEO_S5KGW3) += s5kgw3.o\\n' >> drivers/media/i2c/Makefile
+\tgrep -q 'config VIDEO_S5K3T2' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5K3T2\\n\\ttristate "Samsung S5K3T2 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K3T2 20MP camera.\\n' >> drivers/media/i2c/Kconfig
+\tgrep -q 'config VIDEO_S5K5E9' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5K5E9\\n\\ttristate "Samsung S5K5E9 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5K5E9 5MP macro camera.\\n' >> drivers/media/i2c/Kconfig
+\tgrep -q 'config VIDEO_S5KGW3' drivers/media/i2c/Kconfig || printf '\\nconfig VIDEO_S5KGW3\\n\\ttristate "Samsung S5KGW3 sensor support"\\n\\tselect V4L2_CCI_I2C\\n\\thelp\\n\\t  V4L2 sensor driver for the Samsung S5KGW3 64MP wide camera.\\n' >> drivers/media/i2c/Kconfig
+
+\tcp "$startdir/qseecom_mobile.h" include/uapi/linux/
+\tcp "$startdir/qcom_qseecom_mobile.c" drivers/firmware/qcom/
+\tgrep -q 'qcom_qseecom_mobile.o' drivers/firmware/qcom/Makefile || printf 'obj-m += qcom_qseecom_mobile.o\\n' >> drivers/firmware/qcom/Makefile
+
+\t# Framebuffer fallback
+\t./scripts/config --enable FB_SIMPLE
+\t./scripts/config --enable SYSFB_SIMPLEFB
+\t./scripts/config --enable DRM_SIMPLEDRM
+\t# Cameras (all 4 sensors)
+\t./scripts/config --module VIDEO_IMX355
+\t./scripts/config --module VIDEO_S5K3T2
+\t./scripts/config --module VIDEO_S5K5E9
+\t./scripts/config --module VIDEO_S5KGW3
+\t# NFC (NXP NCI I2C)
+\t./scripts/config --module NFC
+\t./scripts/config --module NFC_DIGITAL
+\t./scripts/config --module NFC_NCI
+\t./scripts/config --module NFC_NXP_NCI
+\t./scripts/config --module NFC_NXP_NCI_I2C
+\t# IR blaster (SPI IR TX)
+\t./scripts/config --module RC_CORE
+\t./scripts/config --enable LIRC
+\t./scripts/config --enable RC_DEVICES
+\t./scripts/config --module IR_SPI
+\t# Reboot mode (reboot bootloader)
+\t./scripts/config --enable NVMEM_REBOOT_MODE
+\tmake ARCH="$_carch" LLVM=1 CC="ccache clang" olddefconfig
 }'''
 
 OLD_PREPARE = '''prepare() {
