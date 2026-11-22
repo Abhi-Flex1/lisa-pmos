@@ -1,4 +1,9 @@
 #!/bin/sh
+# Camera /dev/media*, /dev/video* and /dev/v4l-subdev* are root:video 0660.
+# Without this the user cannot open cameras, so plasma-camera and WirePlumber
+# report no cameras at all even though libcamera enumerates all four sensors.
+addgroup user video 2>/dev/null || true
+
 # Qualcomm Q6AFE/Q6ASM (snd_soc_sm8250) requires interrupt-driven ALSA
 # scheduling (tsched=0) and 48 kHz playback to avoid PulseAudio ALSA
 # xrun/deadlock loops.
