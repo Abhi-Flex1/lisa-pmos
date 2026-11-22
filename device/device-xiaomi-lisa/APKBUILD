@@ -4,7 +4,7 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=8
+pkgrel=9
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -118,5 +118,5 @@ cb4fd850345ece46ea2c5fe6afef5dac0ced026c3ecc34e0fd46458512942a8e42fd24316dd49a4c
 24f2aa7a6e8d64ad40863f4c03fc91c0e1a7d27b3dbe912908f68af5dd9e5d9a226e1889e71f281468538bc2816997d3e6790586f2f38b53592d3add27674677  50-lisa-input-perms.rules
 3e8d4cb673de4ed60b9c77c5d1e4e82c9cc7f86be712b1ba002191ff89216fb56c0558713e4546e9b7185b6b2745d3f845fe464929eccde8d22927b898584da2  50-lisa.preset
 e3b87f905c8ee88db6d6dc70a3d79c00b31a1bdff8503cbf2f8708bc9177f60fb59c6238da4520753937838350d5bf583c5191a083cea6e6206cd11a1d206c61  99-lisa-printk.conf
-9b6ad934e4063278684ddf8c63b8db8a05f97b6cc3e02edbb788acee060e79015152c691be43d0dcb10b6614b271b43c54e113b91f4f10d4380de59f0663ecb2  xiaomi-lisa-preset.conf
+68fae8244c1bfaefd9bbb4bef44efbfd46c0c3f18132b1ed76aacb0d0c63c7cebf790f41af69106663521ef136d754c59fba6dd6c9cda76c4b4b8e859f356ea7  xiaomi-lisa-preset.conf
 "
