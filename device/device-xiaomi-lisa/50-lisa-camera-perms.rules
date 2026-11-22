@@ -1,0 +1,5 @@
+# Camera media graph, video nodes and subdevices must be usable by the
+# logged-in user. The stock "video" group membership only affects new
+# sessions, so force the device nodes to the "user" group as well.
+SUBSYSTEM=="media", GROUP="user", MODE="0660"
+SUBSYSTEM=="video4linux", GROUP="user", MODE="0660"

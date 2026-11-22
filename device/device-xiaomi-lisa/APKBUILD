@@ -48,6 +48,7 @@ source="
 	xiaomi-lisa-modules.conf
 	73-xiaomi-lisa-haptics.rules
 	50-lisa-cameras.conf
+	50-lisa-camera-perms.rules
 "
 
 build() {
@@ -73,6 +74,8 @@ package() {
 		"$pkgdir/etc/udev/rules.d/73-xiaomi-lisa-haptics.rules"
 	install -Dm644 "$srcdir/50-lisa-cameras.conf" \
 		"$pkgdir/etc/wireplumber/wireplumber.conf.d/50-lisa-cameras.conf"
+	install -Dm644 "$srcdir/50-lisa-camera-perms.rules" \
+		"$pkgdir/etc/udev/rules.d/50-lisa-camera-perms.rules"
 }
 
 sha512sums="
@@ -83,5 +86,6 @@ f89a78b103e29733307429f30e5b4dc9d12f59d93fd3eaa081d22bed8a297b80edd060d9590a2d88
 df648d97f0b1b8abdec93eef1ed8ff0c6766e96d1fe55d207d0fa6aed032ae6acd2b2751eb5cc1af2cc934e74d767cf82a76e12fcfcbf53b25358ab594cc69b2  xiaomi-lisa-modules.conf
 6a462c5aa29b400a57529b90fc11636858ae865258b75654930390a4c4f498fcfdc0aa242c8c39537d91133c594c4bbd3c70082cad60cae33b33a856504b8ba5  73-xiaomi-lisa-haptics.rules
 71ff406de7725373206312fa840e33f0f1a0c3c14cfc0d2f7362837dfd1097e5aec9b5a67a431a2701054e7d19e687ebe0711e7dfce55f834b33dc691917a5c9  50-lisa-cameras.conf
+4bd78347e1f3dba0e5dd4dd70be8f0a776d4a5af3972d80d9a6e87e7856535db726ca4aef39a484cdde67dde6b85d17fe763f0a5b63da8d3d207b65de37e4089  50-lisa-camera-perms.rules
 "
 "
