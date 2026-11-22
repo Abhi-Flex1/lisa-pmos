@@ -4,7 +4,7 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=6
+pkgrel=7
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -107,5 +107,4 @@ e11213f1b0758cd6526b06b71ba81508711da427c7c795e4a23cedbdf239c64fdd784d03e138b378
 a46372a7e41b73fef6a2db07e8605ad0654914f9b88d4f6b9ffd94ac850171a8a3d9d332eed300aa65544a339c9f10f5d75c6bce5e1f0cbd24e771eef0fe8840  lisa-regdomain.service
 cb4fd850345ece46ea2c5fe6afef5dac0ced026c3ecc34e0fd46458512942a8e42fd24316dd49a4cedc7572d1e6f1147f4f47ba6f653292eff3d4e57c7e1d968  lisa-regdomain
 24f2aa7a6e8d64ad40863f4c03fc91c0e1a7d27b3dbe912908f68af5dd9e5d9a226e1889e71f281468538bc2816997d3e6790586f2f38b53592d3add27674677  50-lisa-input-perms.rules
-"
 "
