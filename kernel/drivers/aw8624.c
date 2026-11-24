@@ -181,44 +181,59 @@ static int aw8624_stop(struct aw8624_data *haptics)
 }
 
 /*
- * Map requested duration (ms) to Xiaomi lisa's HyperOS Taptic SRAM waveforms
- * (aw8624_haptic.bin @ 24 kHz) tuned for a razor-sharp, mechanical iOS Taptic
- * click (single-cycle 4.9 ms impulse with zero vibration tail):
- *   #11:  4.9 ms (1.0 cyc, peak  71) @ high DATDBG gain (0xd8..0xff) -> crisp iPhone click/tock
- *   #8 : 12.4 ms (2.5 cyc, peak 111) @ 0xb0 -> stronger notification pulse
+ * Map requested duration (ms) to Xiaomi lisa's full-scale 127/127 overdrive +
+ * reverse-phase active-brake iOS Taptic SRAM waveforms (aw8624_haptic.bin):
+ *   #11:  7.3 ms (1.0 cyc max overdrive + 0.5 cyc hard brake) - crisp iPhone keyboard/button CLICK
+ *   #10:  9.8 ms (1.5 cyc max overdrive + 0.5 cyc hard brake) - solid whole-body iPhone TOCK (unlock/drag/shell)
+ *   #9 : 13.4 ms (2.0 cyc max overdrive + 0.75 cyc hard brake) - strong notification pulse
  */
 static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 duration_ms)
 {
 	u8 wav_id;
 	u8 gain;
+	int ret;
 
 	if (duration_ms <= 20) {
-		/* Keyboard / light UI tap: single-cycle 4.9 ms crisp iPhone click */
 		wav_id = 11;
-		gain = 0xd8 + ((u32)magnitude * (0xf4 - 0xd8)) / 0xffff;
+		gain = 0x6c + ((u32)magnitude * (0x80 - 0x6c)) / 0xffff;
 	} else if (duration_ms <= 110) {
-		/* Unlock / drag / shell action: full-strength single-cycle mechanical TOCK */
-		wav_id = 11;
-		gain = 0xf0 + ((u32)magnitude * (0xff - 0xf0)) / 0xffff;
+		wav_id = 10;
+		gain = 0x74 + ((u32)magnitude * (0x80 - 0x74)) / 0xffff;
 	} else {
-		/* Stronger notification pulse (111..150 ms) */
-		wav_id = 8;
-		gain = 0x98 + ((u32)magnitude * (0xb8 - 0x98)) / 0xffff;
+		wav_id = 9;
+		gain = 0x70 + ((u32)magnitude * (0x80 - 0x70)) / 0xffff;
 	}
 
 	if (haptics->cont_active)
 		aw8624_stop(haptics);
 
 	/*
-	 * Use pure regmap_write() (zero I2C reads) so QUP I2C4 GPI DMA never
-	 * exercises its RX channel during rapid haptic bursts.
+	 * Wake chip to ACTIVE+RAM first (never touch GO while in STANDBY),
+	 * wait briefly for the internal 24MHz oscillator, then fire with
+	 * write-only regmap_write() calls (zero I2C reads).
 	 */
-	regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_DISABLE);
-	regmap_write(haptics->regmap, AW8624_REG_SYSCTRL,
-		     AW8624_SYSCTRL_PLAY_MODE_RAM | AW8624_SYSCTRL_ACTIVE);
-	regmap_write(haptics->regmap, AW8624_REG_DATDBG, gain);
-	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ1, wav_id);
-	return regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_ENABLE);
+	ret = regmap_write(haptics->regmap, AW8624_REG_SYSCTRL,
+			   AW8624_SYSCTRL_PLAY_MODE_RAM | AW8624_SYSCTRL_ACTIVE);
+	if (ret)
+		return ret;
+
+	usleep_range(300, 500);
+
+	ret = regmap_write(haptics->regmap, AW8624_REG_DATDBG, gain);
+	if (ret)
+		return ret;
+
+	ret = regmap_write(haptics->regmap, AW8624_REG_WAVSEQ1, wav_id);
+	if (ret)
+		return ret;
+
+	ret = regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_ENABLE);
+	if (ret)
+		return ret;
+
+	/* Let the 7-13ms impulse finish before allowing another I2C burst */
+	usleep_range(12000, 14000);
+	return 0;
 }
 
 static int aw8624_start_cont(struct aw8624_data *haptics, u16 magnitude)
