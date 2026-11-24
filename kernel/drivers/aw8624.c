@@ -182,51 +182,43 @@ static int aw8624_stop(struct aw8624_data *haptics)
 
 /*
  * Map requested duration (ms) to Xiaomi lisa's HyperOS Taptic SRAM waveforms
- * (aw8624_haptic.bin @ 24 kHz) tuned for a crisp, clicky iOS Taptic feel:
- *   #8 : 12.4 ms (2.5 cyc, peak 111) - crisp clicky iOS keyboard & button tap
- *   #5 : 16.8 ms (3.0 cyc, peak 111) - firm punchy Taptic click (shell/drag/unlock)
- *   #6 : 21.6 ms (4.5 cyc, peak 111) - medium-strong Taptic pulse (notifications)
- *   #2 : 24.4 ms (5.5 cyc, peak 111) - strong Taptic thud
+ * (aw8624_haptic.bin @ 24 kHz) tuned for a razor-sharp, mechanical iOS Taptic
+ * click (single-cycle 4.9 ms impulse with zero vibration tail):
+ *   #11:  4.9 ms (1.0 cyc, peak  71) @ high DATDBG gain (0xd8..0xff) -> crisp iPhone click/tock
+ *   #8 : 12.4 ms (2.5 cyc, peak 111) @ 0xb0 -> stronger notification pulse
  */
-static u8 aw8624_select_ram_wav(u16 duration_ms)
-{
-	if (duration_ms <= 20)
-		return 8;
-	if (duration_ms <= 105)
-		return 5;
-	if (duration_ms <= 130)
-		return 6;
-	return 2;
-}
-
 static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 duration_ms)
 {
-	u8 wav_id = aw8624_select_ram_wav(duration_ms);
+	u8 wav_id;
 	u8 gain;
 
-	/* Scale 16-bit FF magnitude into punchy AW8624 DATDBG gain [0x78..0xb0] */
-	gain = 0x78 + ((u32)magnitude * (0xb0 - 0x78)) / 0xffff;
-
-	if (haptics->cont_active) {
-		aw8624_stop(haptics);
+	if (duration_ms <= 20) {
+		/* Keyboard / light UI tap: single-cycle 4.9 ms crisp iPhone click */
+		wav_id = 11;
+		gain = 0xd8 + ((u32)magnitude * (0xf4 - 0xd8)) / 0xffff;
+	} else if (duration_ms <= 110) {
+		/* Unlock / drag / shell action: full-strength single-cycle mechanical TOCK */
+		wav_id = 11;
+		gain = 0xf0 + ((u32)magnitude * (0xff - 0xf0)) / 0xffff;
 	} else {
-		regmap_update_bits(haptics->regmap, AW8624_REG_GO,
-				   AW8624_GO_MASK, AW8624_GO_DISABLE);
+		/* Stronger notification pulse (111..150 ms) */
+		wav_id = 8;
+		gain = 0x98 + ((u32)magnitude * (0xb8 - 0x98)) / 0xffff;
 	}
 
-	regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
-			   AW8624_SYSCTRL_PLAY_MODE_MASK |
-			   AW8624_SYSCTRL_WORK_MODE_MASK,
-			   AW8624_SYSCTRL_PLAY_MODE_RAM |
-			   AW8624_SYSCTRL_ACTIVE);
+	if (haptics->cont_active)
+		aw8624_stop(haptics);
+
+	/*
+	 * Use pure regmap_write() (zero I2C reads) so QUP I2C4 GPI DMA never
+	 * exercises its RX channel during rapid haptic bursts.
+	 */
+	regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_DISABLE);
+	regmap_write(haptics->regmap, AW8624_REG_SYSCTRL,
+		     AW8624_SYSCTRL_PLAY_MODE_RAM | AW8624_SYSCTRL_ACTIVE);
 	regmap_write(haptics->regmap, AW8624_REG_DATDBG, gain);
 	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ1, wav_id);
-	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ2, 0x00);
-	regmap_write(haptics->regmap, AW8624_REG_WAVLOOP1, 0x00);
-	regmap_write(haptics->regmap, AW8624_REG_MAIN_LOOP, 0x00);
-
-	return regmap_update_bits(haptics->regmap, AW8624_REG_GO,
-				  AW8624_GO_MASK, AW8624_GO_ENABLE);
+	return regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_ENABLE);
 }
 
 static int aw8624_start_cont(struct aw8624_data *haptics, u16 magnitude)
@@ -367,6 +359,11 @@ static void aw8624_ram_loaded(const struct firmware *fw, void *context)
 			break;
 		}
 	}
+
+	/* Pre-clear sequence terminator and loop registers once */
+	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ2, 0x00);
+	regmap_write(haptics->regmap, AW8624_REG_WAVLOOP1, 0x00);
+	regmap_write(haptics->regmap, AW8624_REG_MAIN_LOOP, 0x00);
 
 	/* Disable RAMINIT and return to standby */
 	regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
