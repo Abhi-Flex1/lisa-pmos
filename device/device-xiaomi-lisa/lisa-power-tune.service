@@ -1,10 +1,29 @@
 [Unit]
-Description=Xiaomi lisa power tuning and touch recovery
+Description=Xiaomi lisa power tuning, sleep wakeup hygiene, haptics PM, and touch recovery
 After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'for f in /sys/devices/system/cpu/cpufreq/policy*/schedutil/rate_limit_us; do [ -w "$f" ] && echo 4000 > "$f"; done; grep -q "Goodix Berlin" /proc/bus/input/devices || { modprobe -r goodix_berlin_spi 2>/dev/null; sleep 1; modprobe goodix_berlin_spi 2>/dev/null; }; true'
+ExecStart=/bin/sh -c '\
+for f in /sys/devices/system/cpu/cpufreq/policy*/schedutil/rate_limit_us; do [ -w "$f" ] && echo 4000 > "$f"; done; \
+[ -w /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control ] && echo on > /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control; \
+[ -w /sys/power/mem_sleep ] && echo s2idle > /sys/power/mem_sleep; \
+for w in \
+  /sys/devices/platform/soc@0/a600000.usb/power/wakeup \
+  /sys/devices/platform/pmic-glink/pmic_glink.power-supply.0/power_supply/qcom-battmgr-bat/power/wakeup \
+  /sys/devices/platform/pmic-glink/pmic_glink.power-supply.0/power_supply/qcom-battmgr-usb/power/wakeup \
+  /sys/devices/platform/pmic-glink/pmic_glink.power-supply.0/power_supply/qcom-battmgr-wls/power/wakeup \
+  /sys/devices/platform/pmic-glink/pmic_glink.ucsi.0/power_supply/ucsi-source-psy-pmic_glink.ucsi.01/power/wakeup \
+  /sys/devices/platform/soc@0/3700000.remoteproc/power/wakeup \
+  /sys/devices/platform/soc@0/8a00000.remoteproc/power/wakeup \
+  /sys/devices/platform/soc@0/9c0000.geniqup/99c000.serial/power/wakeup \
+  /sys/devices/platform/soc@0/a300000.remoteproc/power/wakeup \
+  /sys/devices/platform/soc@0/c263000.thermal-sensor/power/wakeup \
+  /sys/devices/platform/soc@0/c265000.thermal-sensor/power/wakeup; do \
+  [ -w "$w" ] && echo disabled > "$w"; \
+done; \
+grep -q "Goodix Berlin" /proc/bus/input/devices || { modprobe -r goodix_berlin_spi 2>/dev/null; sleep 1; modprobe goodix_berlin_spi 2>/dev/null; }; \
+true'
 
 [Install]
 WantedBy=multi-user.target
