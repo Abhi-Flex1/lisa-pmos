@@ -98,6 +98,7 @@
 #define AW8624_RAM_FW_NAME		"aw8624_haptic.bin"
 #define AW8624_RAM_CHUNK_SIZE		64
 #define AW8624_RAM_MAX_DURATION_MS	80
+#define AW8624_MAX_EFFECTS		16
 
 /* Default LRA parameters for Xiaomi 11 Lite 5G NE (from vendor DTBO) */
 #define AW8624_DEFAULT_F0_PRE		2050
@@ -111,6 +112,11 @@
 #define AW8624_DEFAULT_R_SPARE		0x68
 #define AW8624_DEFAULT_SW_BRAKE		0x2c
 
+struct aw8624_effect {
+	u16 magnitude;
+	u16 duration_ms;
+};
+
 struct aw8624_data {
 	struct i2c_client *client;
 	struct device *dev;
@@ -118,7 +124,9 @@ struct aw8624_data {
 	struct gpio_desc *reset_gpio;
 	struct input_dev *input_dev;
 	struct work_struct play_work;
+	struct delayed_work stop_work;
 	struct mutex lock;
+	struct aw8624_effect effects[AW8624_MAX_EFFECTS];
 	bool ram_loaded;
 	bool cont_active;
 	u16 magnitude;
@@ -384,6 +392,17 @@ static void aw8624_ram_loaded(const struct firmware *fw, void *context)
 	release_firmware(fw);
 }
 
+static void aw8624_stop_work(struct work_struct *work)
+{
+	struct aw8624_data *haptics =
+		container_of(work, struct aw8624_data, stop_work.work);
+
+	mutex_lock(&haptics->lock);
+	if (haptics->cont_active)
+		aw8624_stop(haptics);
+	mutex_unlock(&haptics->lock);
+}
+
 static void aw8624_play_work(struct work_struct *work)
 {
 	struct aw8624_data *haptics = container_of(work, struct aw8624_data, play_work);
@@ -392,28 +411,64 @@ static void aw8624_play_work(struct work_struct *work)
 
 	mutex_lock(&haptics->lock);
 	if (mag) {
-		if (haptics->ram_loaded && dur > 0 && dur <= AW8624_RAM_MAX_DURATION_MS)
+		if (haptics->ram_loaded && dur > 0 && dur <= AW8624_RAM_MAX_DURATION_MS) {
 			aw8624_start_ram(haptics, mag, dur);
-		else
+		} else {
 			aw8624_start_cont(haptics, mag);
+			if (dur > 0)
+				mod_delayed_work(system_wq, &haptics->stop_work,
+						 msecs_to_jiffies(dur));
+		}
 	} else if (haptics->cont_active) {
 		aw8624_stop(haptics);
 	}
 	mutex_unlock(&haptics->lock);
 }
 
-static int aw8624_ff_play(struct input_dev *dev, void *data, struct ff_effect *effect)
+static int aw8624_ff_upload(struct input_dev *dev, struct ff_effect *effect,
+			    struct ff_effect *old)
 {
 	struct aw8624_data *haptics = input_get_drvdata(dev);
-	u32 mag;
+	u16 mag = 0;
 
-	mag = effect->u.rumble.strong_magnitude;
-	if (!mag)
-		mag = effect->u.rumble.weak_magnitude;
+	if (effect->id < 0 || effect->id >= AW8624_MAX_EFFECTS)
+		return -EINVAL;
 
-	WRITE_ONCE(haptics->magnitude, mag);
-	WRITE_ONCE(haptics->duration_ms, effect->replay.length);
-	schedule_work(&haptics->play_work);
+	if (effect->type == FF_RUMBLE) {
+		mag = effect->u.rumble.strong_magnitude;
+		if (!mag)
+			mag = effect->u.rumble.weak_magnitude;
+	} else if (effect->type == FF_PERIODIC) {
+		mag = effect->u.periodic.magnitude;
+		if (mag > 0x7fff)
+			mag = 0x7fff;
+		mag <<= 1;
+	} else {
+		return -EINVAL;
+	}
+
+	haptics->effects[effect->id].magnitude = mag;
+	haptics->effects[effect->id].duration_ms = effect->replay.length;
+	return 0;
+}
+
+static int aw8624_ff_playback(struct input_dev *dev, int effect_id, int value)
+{
+	struct aw8624_data *haptics = input_get_drvdata(dev);
+
+	if (effect_id < 0 || effect_id >= AW8624_MAX_EFFECTS)
+		return -EINVAL;
+
+	if (value > 0) {
+		cancel_delayed_work(&haptics->stop_work);
+		WRITE_ONCE(haptics->magnitude, haptics->effects[effect_id].magnitude);
+		WRITE_ONCE(haptics->duration_ms, haptics->effects[effect_id].duration_ms);
+		schedule_work(&haptics->play_work);
+	} else {
+		cancel_delayed_work(&haptics->stop_work);
+		WRITE_ONCE(haptics->magnitude, 0);
+		schedule_work(&haptics->play_work);
+	}
 
 	return 0;
 }
@@ -422,6 +477,7 @@ static void aw8624_close(struct input_dev *dev)
 {
 	struct aw8624_data *haptics = input_get_drvdata(dev);
 
+	cancel_delayed_work_sync(&haptics->stop_work);
 	cancel_work_sync(&haptics->play_work);
 	mutex_lock(&haptics->lock);
 	aw8624_stop(haptics);
@@ -506,6 +562,7 @@ static int aw8624_probe(struct i2c_client *client)
 				     "Failed to get reset GPIO\n");
 
 	INIT_WORK(&haptics->play_work, aw8624_play_work);
+	INIT_DELAYED_WORK(&haptics->stop_work, aw8624_stop_work);
 	i2c_set_clientdata(client, haptics);
 
 	ret = aw8624_hw_init(haptics);
@@ -521,10 +578,15 @@ static int aw8624_probe(struct i2c_client *client)
 	haptics->input_dev->close = aw8624_close;
 	input_set_drvdata(haptics->input_dev, haptics);
 	input_set_capability(haptics->input_dev, EV_FF, FF_RUMBLE);
+	input_set_capability(haptics->input_dev, EV_FF, FF_PERIODIC);
+	input_set_capability(haptics->input_dev, EV_FF, FF_SINE);
 
-	ret = input_ff_create_memless(haptics->input_dev, NULL, aw8624_ff_play);
+	ret = input_ff_create(haptics->input_dev, AW8624_MAX_EFFECTS);
 	if (ret)
-		return dev_err_probe(dev, ret, "Failed to create FF memless device\n");
+		return dev_err_probe(dev, ret, "Failed to create FF device\n");
+
+	haptics->input_dev->ff->upload = aw8624_ff_upload;
+	haptics->input_dev->ff->playback = aw8624_ff_playback;
 
 	ret = input_register_device(haptics->input_dev);
 	if (ret)
@@ -544,6 +606,7 @@ static void aw8624_remove(struct i2c_client *client)
 {
 	struct aw8624_data *haptics = i2c_get_clientdata(client);
 
+	cancel_delayed_work_sync(&haptics->stop_work);
 	cancel_work_sync(&haptics->play_work);
 	mutex_lock(&haptics->lock);
 	aw8624_stop(haptics);
