@@ -97,7 +97,7 @@
 
 #define AW8624_RAM_FW_NAME		"aw8624_haptic.bin"
 #define AW8624_RAM_CHUNK_SIZE		64
-#define AW8624_RAM_MAX_DURATION_MS	80
+#define AW8624_RAM_MAX_DURATION_MS	150
 #define AW8624_MAX_EFFECTS		16
 
 /* Default LRA parameters for Xiaomi 11 Lite 5G NE (from vendor DTBO) */
@@ -183,26 +183,23 @@ static int aw8624_stop(struct aw8624_data *haptics)
 /*
  * Map requested duration (ms) to one of Xiaomi lisa's 11 HyperOS Taptic SRAM
  * waveforms (aw8624_haptic.bin @ 24 kHz):
- *   #11:  4.9 ms (1.0 cyc) - ultra-crisp iOS micro-tick (keys, light buttons)
+ *   #11:  4.9 ms (1.0 cyc) - ultra-crisp iOS micro-tick (keys, Short=10ms)
  *   #8 : 12.4 ms (2.5 cyc) - crisp iOS Taptic click (UI buttons, toggles)
- *   #5 : 16.8 ms (3.0 cyc) - firm Taptic tap (gestures, window close)
+ *   #5 : 16.8 ms (3.0 cyc) - firm Taptic tap (Medium=50ms, default Long=100ms)
  *   #6 : 21.6 ms (4.5 cyc) - medium-strong Taptic pulse (notifications)
- *   #2 : 24.4 ms (5.5 cyc) - strong Taptic thud
- *   #1 : 29.1 ms (6.5 cyc) - deep Taptic thud
+ *   #2 : 24.4 ms (5.5 cyc) - strong Taptic thud (110..150ms)
  */
 static u8 aw8624_select_ram_wav(u16 duration_ms)
 {
-	if (duration_ms <= 10)
+	if (duration_ms <= 12)
 		return 11;
-	if (duration_ms <= 15)
+	if (duration_ms <= 30)
 		return 8;
-	if (duration_ms <= 20)
+	if (duration_ms <= 60)
 		return 5;
-	if (duration_ms <= 26)
+	if (duration_ms <= 110)
 		return 6;
-	if (duration_ms <= 45)
-		return 2;
-	return 1;
+	return 2;
 }
 
 static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 duration_ms)
