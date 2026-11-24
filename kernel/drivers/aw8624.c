@@ -181,23 +181,20 @@ static int aw8624_stop(struct aw8624_data *haptics)
 }
 
 /*
- * Map requested duration (ms) to one of Xiaomi lisa's 11 HyperOS Taptic SRAM
- * waveforms (aw8624_haptic.bin @ 24 kHz):
- *   #11:  4.9 ms (1.0 cyc) - ultra-crisp iOS micro-tick (keys, Short=10ms)
- *   #8 : 12.4 ms (2.5 cyc) - crisp iOS Taptic click (UI buttons, toggles)
- *   #5 : 16.8 ms (3.0 cyc) - firm Taptic tap (Medium=50ms, default Long=100ms)
- *   #6 : 21.6 ms (4.5 cyc) - medium-strong Taptic pulse (notifications)
- *   #2 : 24.4 ms (5.5 cyc) - strong Taptic thud (110..150ms)
+ * Map requested duration (ms) to Xiaomi lisa's HyperOS Taptic SRAM waveforms
+ * (aw8624_haptic.bin @ 24 kHz) tuned for a crisp, clicky iOS Taptic feel:
+ *   #8 : 12.4 ms (2.5 cyc, peak 111) - crisp clicky iOS keyboard & button tap
+ *   #5 : 16.8 ms (3.0 cyc, peak 111) - firm punchy Taptic click (shell/drag/unlock)
+ *   #6 : 21.6 ms (4.5 cyc, peak 111) - medium-strong Taptic pulse (notifications)
+ *   #2 : 24.4 ms (5.5 cyc, peak 111) - strong Taptic thud
  */
 static u8 aw8624_select_ram_wav(u16 duration_ms)
 {
-	if (duration_ms <= 12)
-		return 11;
-	if (duration_ms <= 30)
+	if (duration_ms <= 20)
 		return 8;
-	if (duration_ms <= 60)
+	if (duration_ms <= 105)
 		return 5;
-	if (duration_ms <= 110)
+	if (duration_ms <= 130)
 		return 6;
 	return 2;
 }
@@ -207,8 +204,8 @@ static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 dura
 	u8 wav_id = aw8624_select_ram_wav(duration_ms);
 	u8 gain;
 
-	/* Scale 16-bit FF magnitude into AW8624 DATDBG gain [0x38..0x80] */
-	gain = 0x38 + ((u32)magnitude * (0x80 - 0x38)) / 0xffff;
+	/* Scale 16-bit FF magnitude into punchy AW8624 DATDBG gain [0x78..0xb0] */
+	gain = 0x78 + ((u32)magnitude * (0xb0 - 0x78)) / 0xffff;
 
 	if (haptics->cont_active) {
 		aw8624_stop(haptics);
