@@ -4,7 +4,7 @@
 pkgname=device-xiaomi-lisa
 pkgdesc="Xiaomi 11 Lite 5G NE / 11 LE"
 pkgver=1
-pkgrel=12
+pkgrel=13
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -63,6 +63,8 @@ source="
 	plasmamobilerc
 	lisa-power-tune.service
 	10-lisa-sensorspd.conf
+	aw8624_haptic.bin
+	xiaomi,lisa.json
 "
 
 build() {
@@ -112,6 +114,10 @@ package() {
 		"$pkgdir/usr/lib/systemd/system/lisa-power-tune.service"
 	install -Dm644 "$srcdir/10-lisa-sensorspd.conf" \
 		"$pkgdir/etc/systemd/system/iio-sensor-proxy.service.d/10-lisa-sensorspd.conf"
+	install -Dm644 "$srcdir/aw8624_haptic.bin" \
+		"$pkgdir/lib/firmware/aw8624_haptic.bin"
+	install -Dm644 "$srcdir/xiaomi,lisa.json" \
+		"$pkgdir/usr/share/feedbackd/themes/xiaomi,lisa.json"
 }
 
 sha512sums="
@@ -135,4 +141,6 @@ dd4e5f19dc5fba4103b1917f421cb8cd73a8d7c0efe31395fc91c90b3fb325d0beea414b742369f9
 f5b6216f3f05cb9e0f7859dafd8e157b6a85623ddfc60a77de023cc526f5aac64e4c6f9ea0d0a1beaabd190523475be583f2219449e10cf88d5e6a4bc1edde6c  plasmamobilerc
 fd8f6ffc5aaa30d64700eb7e76dcdae89e56f518e8b92b8da96f71f1aebcd7c9ae0bceb91ab154c013e025de24f30445959804c608cef3e9b05d145dd01b4264  lisa-power-tune.service
 f4b7fd732ccef289e9badc64f1731d86b77cc172fee9624dbeecdc13083e3827ab03e524ed38fdccfb3ff0e40fd6320e1a7ce258ea8bab40997f5828bdef07af  10-lisa-sensorspd.conf
+b80b9520936a13d01fd0c4ff709c90c26c2142dbce58d8f4f38e214b285eeb07cfb8f4dbb05772d1dd4458d0cc404702a35ed9bd9054d116f540aaa2a3e2b921  aw8624_haptic.bin
+e2f26287c77b62dbf34d81a45eb10d365c1f16a386b39ee8ac7fc638750a4e5845a5990f474727f142f1c1e59aa3a754aaa16fe84624504213c7f8548e0f012b  xiaomi,lisa.json
 "

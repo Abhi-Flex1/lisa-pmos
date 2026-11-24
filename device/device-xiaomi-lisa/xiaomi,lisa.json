@@ -1,0 +1,93 @@
+{
+  "name" : "xiaomi,lisa",
+  "parent-name" : "default",
+  "profiles" : [
+    {
+      "name" : "quiet",
+      "feedbacks" : [
+        {
+          "event-name" : "button-pressed",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.75 ],
+          "durations"  : [ 8 ]
+        },
+        {
+          "event-name" : "button-released",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.55 ],
+          "durations"  : [ 12 ]
+        },
+        {
+          "event-name" : "key-pressed",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.65 ],
+          "durations"  : [ 8 ]
+        },
+        {
+          "event-name" : "key-released",
+          "type"       : "Dummy"
+        },
+        {
+          "event-name" : "window-close",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.85 ],
+          "durations"  : [ 18 ]
+        },
+        {
+          "event-name" : "camera-shutter",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.9 ],
+          "durations"  : [ 14 ]
+        },
+        {
+          "event-name" : "screen-capture",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.9 ],
+          "durations"  : [ 14 ]
+        },
+        {
+          "event-name" : "message-sent-instant",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.6 ],
+          "durations"  : [ 12 ]
+        },
+        {
+          "event-name" : "message-new-instant",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.85, 0.0, 1.0 ],
+          "durations"  : [ 15, 90, 24 ]
+        },
+        {
+          "event-name" : "notification-new-generic",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.8, 0.0, 0.95 ],
+          "durations"  : [ 14, 95, 22 ]
+        },
+        {
+          "event-name" : "message-new-sms",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.85, 0.0, 0.85, 0.0, 1.0 ],
+          "durations"  : [ 16, 80, 16, 80, 26 ]
+        },
+        {
+          "event-name" : "message-new-email",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.8, 0.0, 0.95 ],
+          "durations"  : [ 16, 110, 24 ]
+        },
+        {
+          "event-name" : "bell-terminal",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.7 ],
+          "durations"  : [ 14 ]
+        },
+        {
+          "event-name" : "timeout-completed",
+          "type"       : "VibraPattern",
+          "magnitudes" : [ 0.9, 0.0, 0.9, 0.0, 1.0 ],
+          "durations"  : [ 22, 90, 22, 90, 30 ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,15 +2,18 @@
 /*
  * Input force-feedback driver for the Awinic AW8624 LRA haptic controller.
  *
- * Register definitions and CONT-mode sequence based on the Awinic AW8624
- * datasheet/reference driver, tuned for Xiaomi 11 Lite 5G NE (lisa).
+ * Supports both HyperOS/MIUI SRAM waveform playback (aw8624_haptic.bin) for
+ * crisp iOS-like Taptic clicks/taps and CONT mode for long continuous rumble,
+ * tuned for Xiaomi 11 Lite 5G NE (lisa).
  */
 
 #include <linux/delay.h>
+#include <linux/firmware.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
 #include <linux/workqueue.h>
@@ -19,6 +22,16 @@
 #define AW8624_REG_SYSINTM		0x03
 #define AW8624_REG_SYSCTRL		0x04
 #define AW8624_REG_GO			0x05
+#define AW8624_REG_WAVSEQ1		0x07
+#define AW8624_REG_WAVSEQ2		0x08
+#define AW8624_REG_WAVLOOP1		0x0f
+#define AW8624_REG_MAIN_LOOP		0x13
+#define AW8624_REG_BASE_ADDRH		0x21
+#define AW8624_REG_BASE_ADDRL		0x22
+#define AW8624_REG_FIFO_AEH		0x23
+#define AW8624_REG_FIFO_AEL		0x24
+#define AW8624_REG_FIFO_AFH		0x25
+#define AW8624_REG_FIFO_AFL		0x26
 #define AW8624_REG_DATCTRL		0x2b
 #define AW8624_REG_PWMDBG		0x2e
 #define AW8624_REG_BRAKE0_CTRL		0x32
@@ -26,8 +39,12 @@
 #define AW8624_REG_BRAKE2_CTRL		0x34
 #define AW8624_REG_BRAKE_NUM		0x35
 #define AW8624_REG_SW_BRAKE		0x39
+#define AW8624_REG_DATDBG		0x3b
 #define AW8624_REG_PRLVL		0x3e
 #define AW8624_REG_PRTIME		0x3f
+#define AW8624_REG_RAMADDRH		0x40
+#define AW8624_REG_RAMADDRL		0x41
+#define AW8624_REG_RAMDATA		0x42
 #define AW8624_REG_GLB_STATE		0x47
 #define AW8624_REG_CONT_CTRL		0x48
 #define AW8624_REG_F_PRE_H		0x49
@@ -47,7 +64,11 @@
 #define AW8624_CHIP_ID			0x24
 #define AW8624_SOFTRST_VAL		0xaa
 
+#define AW8624_SYSCTRL_RAMINIT_MASK	BIT(5)
+#define AW8624_SYSCTRL_RAMINIT_EN	BIT(5)
+#define AW8624_SYSCTRL_RAMINIT_OFF	0
 #define AW8624_SYSCTRL_PLAY_MODE_MASK	GENMASK(3, 2)
+#define AW8624_SYSCTRL_PLAY_MODE_RAM	(0 << 2)
 #define AW8624_SYSCTRL_PLAY_MODE_CONT	(2 << 2)
 #define AW8624_SYSCTRL_WORK_MODE_MASK	BIT(0)
 #define AW8624_SYSCTRL_STANDBY		BIT(0)
@@ -74,6 +95,10 @@
 
 #define AW8624_DETCTRL_VBAT_HW_COMP	BIT(6)
 
+#define AW8624_RAM_FW_NAME		"aw8624_haptic.bin"
+#define AW8624_RAM_CHUNK_SIZE		64
+#define AW8624_RAM_MAX_DURATION_MS	80
+
 /* Default LRA parameters for Xiaomi 11 Lite 5G NE (from vendor DTBO) */
 #define AW8624_DEFAULT_F0_PRE		2050
 #define AW8624_DEFAULT_F0_COEFF		260
@@ -87,12 +112,17 @@
 #define AW8624_DEFAULT_SW_BRAKE		0x2c
 
 struct aw8624_data {
+	struct i2c_client *client;
 	struct device *dev;
 	struct regmap *regmap;
 	struct gpio_desc *reset_gpio;
 	struct input_dev *input_dev;
 	struct work_struct play_work;
+	struct mutex lock;
+	bool ram_loaded;
+	bool cont_active;
 	u16 magnitude;
+	u16 duration_ms;
 	u32 f0_pre;
 	u32 f0_coeff;
 	u32 drv_lvl_max;
@@ -133,12 +163,68 @@ static int aw8624_wait_standby(struct aw8624_data *haptics)
 
 static int aw8624_stop(struct aw8624_data *haptics)
 {
+	haptics->cont_active = false;
 	regmap_update_bits(haptics->regmap, AW8624_REG_GO,
 			   AW8624_GO_MASK, AW8624_GO_DISABLE);
 	aw8624_wait_standby(haptics);
 	return regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
 				  AW8624_SYSCTRL_WORK_MODE_MASK,
 				  AW8624_SYSCTRL_STANDBY);
+}
+
+/*
+ * Map requested duration (ms) to one of Xiaomi lisa's 11 HyperOS Taptic SRAM
+ * waveforms (aw8624_haptic.bin @ 24 kHz):
+ *   #11:  4.9 ms (1.0 cyc) - ultra-crisp iOS micro-tick (keys, light buttons)
+ *   #8 : 12.4 ms (2.5 cyc) - crisp iOS Taptic click (UI buttons, toggles)
+ *   #5 : 16.8 ms (3.0 cyc) - firm Taptic tap (gestures, window close)
+ *   #6 : 21.6 ms (4.5 cyc) - medium-strong Taptic pulse (notifications)
+ *   #2 : 24.4 ms (5.5 cyc) - strong Taptic thud
+ *   #1 : 29.1 ms (6.5 cyc) - deep Taptic thud
+ */
+static u8 aw8624_select_ram_wav(u16 duration_ms)
+{
+	if (duration_ms <= 10)
+		return 11;
+	if (duration_ms <= 15)
+		return 8;
+	if (duration_ms <= 20)
+		return 5;
+	if (duration_ms <= 26)
+		return 6;
+	if (duration_ms <= 45)
+		return 2;
+	return 1;
+}
+
+static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 duration_ms)
+{
+	u8 wav_id = aw8624_select_ram_wav(duration_ms);
+	u8 gain;
+
+	/* Scale 16-bit FF magnitude into AW8624 DATDBG gain [0x38..0x80] */
+	gain = 0x38 + ((u32)magnitude * (0x80 - 0x38)) / 0xffff;
+
+	if (haptics->cont_active) {
+		aw8624_stop(haptics);
+	} else {
+		regmap_update_bits(haptics->regmap, AW8624_REG_GO,
+				   AW8624_GO_MASK, AW8624_GO_DISABLE);
+	}
+
+	regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
+			   AW8624_SYSCTRL_PLAY_MODE_MASK |
+			   AW8624_SYSCTRL_WORK_MODE_MASK,
+			   AW8624_SYSCTRL_PLAY_MODE_RAM |
+			   AW8624_SYSCTRL_ACTIVE);
+	regmap_write(haptics->regmap, AW8624_REG_DATDBG, gain);
+	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ1, wav_id);
+	regmap_write(haptics->regmap, AW8624_REG_WAVSEQ2, 0x00);
+	regmap_write(haptics->regmap, AW8624_REG_WAVLOOP1, 0x00);
+	regmap_write(haptics->regmap, AW8624_REG_MAIN_LOOP, 0x00);
+
+	return regmap_update_bits(haptics->regmap, AW8624_REG_GO,
+				  AW8624_GO_MASK, AW8624_GO_ENABLE);
 }
 
 static int aw8624_start_cont(struct aw8624_data *haptics, u16 magnitude)
@@ -203,19 +289,117 @@ static int aw8624_start_cont(struct aw8624_data *haptics, u16 magnitude)
 	regmap_write(haptics->regmap, AW8624_REG_DRV_LVL, drv_lvl);
 	regmap_write(haptics->regmap, AW8624_REG_DRV_LVL_OV, haptics->drv_lvl_ov);
 
+	haptics->cont_active = true;
 	return regmap_update_bits(haptics->regmap, AW8624_REG_GO,
 				  AW8624_GO_MASK, AW8624_GO_ENABLE);
+}
+
+static void aw8624_ram_loaded(const struct firmware *fw, void *context)
+{
+	struct aw8624_data *haptics = context;
+	u8 tx_buf[AW8624_RAM_CHUNK_SIZE + 1];
+	u16 expected_sum, calc_sum = 0, base_addr;
+	size_t i, pos;
+	int ret;
+
+	if (!fw) {
+		dev_info(haptics->dev, "%s not found, using CONT mode only\n",
+			 AW8624_RAM_FW_NAME);
+		return;
+	}
+
+	if (fw->size < 6) {
+		dev_err(haptics->dev, "Invalid %s size: %zu\n",
+			AW8624_RAM_FW_NAME, fw->size);
+		release_firmware(fw);
+		return;
+	}
+
+	expected_sum = ((u16)fw->data[0] << 8) | fw->data[1];
+	for (i = 2; i < fw->size; i++)
+		calc_sum += fw->data[i];
+
+	if (calc_sum != expected_sum) {
+		dev_err(haptics->dev, "%s checksum mismatch (got 0x%04x, want 0x%04x)\n",
+			AW8624_RAM_FW_NAME, calc_sum, expected_sum);
+		release_firmware(fw);
+		return;
+	}
+
+	base_addr = ((u16)fw->data[2] << 8) | fw->data[3];
+
+	mutex_lock(&haptics->lock);
+
+	aw8624_stop(haptics);
+
+	/* Enable Active + RAMINIT */
+	regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
+			   AW8624_SYSCTRL_WORK_MODE_MASK |
+			   AW8624_SYSCTRL_RAMINIT_MASK,
+			   AW8624_SYSCTRL_ACTIVE |
+			   AW8624_SYSCTRL_RAMINIT_EN);
+
+	/* Program SRAM base address and FIFO watermarks */
+	regmap_write(haptics->regmap, AW8624_REG_BASE_ADDRH, fw->data[2]);
+	regmap_write(haptics->regmap, AW8624_REG_BASE_ADDRL, fw->data[3]);
+	regmap_write(haptics->regmap, AW8624_REG_FIFO_AEH, (base_addr >> 1) >> 8);
+	regmap_write(haptics->regmap, AW8624_REG_FIFO_AEL, (base_addr >> 1) & 0xff);
+	regmap_write(haptics->regmap, AW8624_REG_FIFO_AFH,
+		     (base_addr - (base_addr >> 2)) >> 8);
+	regmap_write(haptics->regmap, AW8624_REG_FIFO_AFL,
+		     (base_addr - (base_addr >> 2)) & 0xff);
+
+	/* Upload SRAM payload starting at fw->data[4] */
+	regmap_write(haptics->regmap, AW8624_REG_RAMADDRH, fw->data[2]);
+	regmap_write(haptics->regmap, AW8624_REG_RAMADDRL, fw->data[3]);
+
+	tx_buf[0] = AW8624_REG_RAMDATA;
+	ret = 0;
+	for (pos = 4; pos < fw->size; pos += AW8624_RAM_CHUNK_SIZE) {
+		size_t chunk = min_t(size_t, AW8624_RAM_CHUNK_SIZE, fw->size - pos);
+
+		memcpy(&tx_buf[1], &fw->data[pos], chunk);
+		ret = i2c_master_send(haptics->client, tx_buf, chunk + 1);
+		if (ret < 0) {
+			dev_err(haptics->dev, "SRAM write failed at %zu: %d\n", pos, ret);
+			break;
+		}
+	}
+
+	/* Disable RAMINIT and return to standby */
+	regmap_update_bits(haptics->regmap, AW8624_REG_SYSCTRL,
+			   AW8624_SYSCTRL_RAMINIT_MASK |
+			   AW8624_SYSCTRL_WORK_MODE_MASK,
+			   AW8624_SYSCTRL_RAMINIT_OFF |
+			   AW8624_SYSCTRL_STANDBY);
+
+	if (ret >= 0) {
+		haptics->ram_loaded = true;
+		dev_info(haptics->dev,
+			 "Loaded %s into SRAM (%zu bytes, base=0x%04x, checksum=0x%04x)\n",
+			 AW8624_RAM_FW_NAME, fw->size - 4, base_addr, calc_sum);
+	}
+
+	mutex_unlock(&haptics->lock);
+	release_firmware(fw);
 }
 
 static void aw8624_play_work(struct work_struct *work)
 {
 	struct aw8624_data *haptics = container_of(work, struct aw8624_data, play_work);
 	u16 mag = READ_ONCE(haptics->magnitude);
+	u16 dur = READ_ONCE(haptics->duration_ms);
 
-	if (mag)
-		aw8624_start_cont(haptics, mag);
-	else
+	mutex_lock(&haptics->lock);
+	if (mag) {
+		if (haptics->ram_loaded && dur > 0 && dur <= AW8624_RAM_MAX_DURATION_MS)
+			aw8624_start_ram(haptics, mag, dur);
+		else
+			aw8624_start_cont(haptics, mag);
+	} else if (haptics->cont_active) {
 		aw8624_stop(haptics);
+	}
+	mutex_unlock(&haptics->lock);
 }
 
 static int aw8624_ff_play(struct input_dev *dev, void *data, struct ff_effect *effect)
@@ -228,6 +412,7 @@ static int aw8624_ff_play(struct input_dev *dev, void *data, struct ff_effect *e
 		mag = effect->u.rumble.weak_magnitude;
 
 	WRITE_ONCE(haptics->magnitude, mag);
+	WRITE_ONCE(haptics->duration_ms, effect->replay.length);
 	schedule_work(&haptics->play_work);
 
 	return 0;
@@ -238,7 +423,9 @@ static void aw8624_close(struct input_dev *dev)
 	struct aw8624_data *haptics = input_get_drvdata(dev);
 
 	cancel_work_sync(&haptics->play_work);
+	mutex_lock(&haptics->lock);
 	aw8624_stop(haptics);
+	mutex_unlock(&haptics->lock);
 }
 
 static int aw8624_hw_init(struct aw8624_data *haptics)
@@ -265,7 +452,7 @@ static int aw8624_hw_init(struct aw8624_data *haptics)
 	regmap_write(haptics->regmap, AW8624_REG_ID, AW8624_SOFTRST_VAL);
 	usleep_range(2000, 2500);
 
-	/* Mask all interrupts (polled CONT mode) */
+	/* Mask all interrupts */
 	regmap_write(haptics->regmap, AW8624_REG_SYSINTM, 0x7f);
 
 	/* 24kHz PWM, disable motor protect override, HW VBAT compensation, standby */
@@ -293,6 +480,7 @@ static int aw8624_probe(struct i2c_client *client)
 	if (!haptics)
 		return -ENOMEM;
 
+	haptics->client = client;
 	haptics->dev = dev;
 	haptics->f0_pre = AW8624_DEFAULT_F0_PRE;
 	haptics->f0_coeff = AW8624_DEFAULT_F0_COEFF;
@@ -301,6 +489,7 @@ static int aw8624_probe(struct i2c_client *client)
 	haptics->cont_td = AW8624_DEFAULT_CONT_TD;
 	haptics->zc_thr = AW8624_DEFAULT_ZC_THR;
 	haptics->num_brk = AW8624_DEFAULT_NUM_BRK;
+	mutex_init(&haptics->lock);
 
 	device_property_read_u32(dev, "awinic,f0-pre", &haptics->f0_pre);
 	device_property_read_u32(dev, "awinic,cont-drv-lvl", &haptics->drv_lvl_max);
@@ -341,6 +530,13 @@ static int aw8624_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to register input device\n");
 
+	/* Load HyperOS Taptic SRAM waveform table asynchronously */
+	ret = request_firmware_nowait(THIS_MODULE, true, AW8624_RAM_FW_NAME,
+				      dev, GFP_KERNEL, haptics,
+				      aw8624_ram_loaded);
+	if (ret)
+		dev_warn(dev, "Could not request %s: %d\n", AW8624_RAM_FW_NAME, ret);
+
 	return 0;
 }
 
@@ -349,7 +545,9 @@ static void aw8624_remove(struct i2c_client *client)
 	struct aw8624_data *haptics = i2c_get_clientdata(client);
 
 	cancel_work_sync(&haptics->play_work);
+	mutex_lock(&haptics->lock);
 	aw8624_stop(haptics);
+	mutex_unlock(&haptics->lock);
 }
 
 static const struct of_device_id aw8624_of_match[] = {
@@ -369,4 +567,5 @@ static struct i2c_driver aw8624_driver = {
 module_i2c_driver(aw8624_driver);
 
 MODULE_DESCRIPTION("Awinic AW8624 LRA haptic force-feedback driver");
+MODULE_FIRMWARE(AW8624_RAM_FW_NAME);
 MODULE_LICENSE("GPL");
