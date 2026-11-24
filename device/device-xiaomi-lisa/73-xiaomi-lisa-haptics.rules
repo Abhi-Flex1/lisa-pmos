@@ -1,4 +1,6 @@
 # Awinic AW8624 haptic controller on Xiaomi 11 Lite 5G NE (lisa)
 SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", SUBSYSTEMS=="input", ATTRS{name}=="aw8624_haptic", TAG+="uaccess", ENV{FEEDBACKD_TYPE}="vibra", MODE="0666"
-# Keep QUP I2C4 (990000.i2c, GPI DMA) out of runtime suspend so aw8624 transfers never time out
+# Keep QUP I2C4 (990000.i2c, GPI DMA) out of runtime suspend
 ACTION=="add", SUBSYSTEM=="platform", KERNEL=="990000.i2c", ATTR{power/control}="on"
+# Auto-recover 990000.i2c if Qualcomm GPI DMA ever stalls with -ETIMEDOUT
+ACTION=="change", SUBSYSTEM=="i2c", KERNEL=="4-005a", ENV{HAPTICS_I2C_TIMEOUT}=="1", RUN+="/usr/libexec/lisa-haptics-recover.sh"

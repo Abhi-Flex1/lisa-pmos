@@ -12,6 +12,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
+#include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
@@ -64,6 +65,7 @@
 #define AW8624_CHIP_ID			0x24
 #define AW8624_SOFTRST_VAL		0xaa
 
+#define AW8624_SYSCTRL_WAVDAT_MODE_1X	BIT(6)
 #define AW8624_SYSCTRL_RAMINIT_MASK	BIT(5)
 #define AW8624_SYSCTRL_RAMINIT_EN	BIT(5)
 #define AW8624_SYSCTRL_RAMINIT_OFF	0
@@ -127,6 +129,7 @@ struct aw8624_data {
 	struct delayed_work stop_work;
 	struct mutex lock;
 	struct aw8624_effect effects[AW8624_MAX_EFFECTS];
+	unsigned long last_recover_jiffies;
 	bool ram_loaded;
 	bool cont_active;
 	u16 magnitude;
@@ -180,6 +183,19 @@ static int aw8624_stop(struct aw8624_data *haptics)
 				  AW8624_SYSCTRL_STANDBY);
 }
 
+static void aw8624_notify_i2c_timeout(struct aw8624_data *haptics)
+{
+	char *envp[] = { "HAPTICS_I2C_TIMEOUT=1", NULL };
+
+	if (haptics->last_recover_jiffies &&
+	    time_before(jiffies, haptics->last_recover_jiffies + 5 * HZ))
+		return;
+
+	haptics->last_recover_jiffies = jiffies;
+	dev_warn(haptics->dev, "I2C timeout detected, requesting 990000.i2c recovery\n");
+	kobject_uevent_env(&haptics->dev->kobj, KOBJ_CHANGE, envp);
+}
+
 /*
  * Map requested duration (ms) to Xiaomi lisa's full-scale 127/127 overdrive +
  * reverse-phase active-brake iOS Taptic SRAM waveforms (aw8624_haptic.bin):
@@ -195,45 +211,52 @@ static int aw8624_start_ram(struct aw8624_data *haptics, u16 magnitude, u16 dura
 
 	if (duration_ms <= 20) {
 		wav_id = 11;
-		gain = 0x6c + ((u32)magnitude * (0x80 - 0x6c)) / 0xffff;
+		gain = 0x70 + ((u32)magnitude * (0x80 - 0x70)) / 0xffff;
 	} else if (duration_ms <= 110) {
 		wav_id = 10;
-		gain = 0x74 + ((u32)magnitude * (0x80 - 0x74)) / 0xffff;
+		gain = 0x78 + ((u32)magnitude * (0x80 - 0x78)) / 0xffff;
 	} else {
 		wav_id = 9;
-		gain = 0x70 + ((u32)magnitude * (0x80 - 0x70)) / 0xffff;
+		gain = 0x74 + ((u32)magnitude * (0x80 - 0x74)) / 0xffff;
 	}
 
 	if (haptics->cont_active)
 		aw8624_stop(haptics);
 
 	/*
-	 * Wake chip to ACTIVE+RAM first (never touch GO while in STANDBY),
-	 * wait briefly for the internal 24MHz oscillator, then fire with
-	 * write-only regmap_write() calls (zero I2C reads).
+	 * Wake chip to ACTIVE + RAM + WAVDAT_MODE_1X (24 kHz = true 205 Hz LRA
+	 * resonance; 0x00 is 2X/12 kHz half-speed!), wait briefly for the 24MHz
+	 * oscillator, then fire with write-only regmap_write() calls.
 	 */
 	ret = regmap_write(haptics->regmap, AW8624_REG_SYSCTRL,
-			   AW8624_SYSCTRL_PLAY_MODE_RAM | AW8624_SYSCTRL_ACTIVE);
+			   AW8624_SYSCTRL_WAVDAT_MODE_1X |
+			   AW8624_SYSCTRL_PLAY_MODE_RAM |
+			   AW8624_SYSCTRL_ACTIVE);
 	if (ret)
-		return ret;
+		goto err_xfer;
 
 	usleep_range(300, 500);
 
 	ret = regmap_write(haptics->regmap, AW8624_REG_DATDBG, gain);
 	if (ret)
-		return ret;
+		goto err_xfer;
 
 	ret = regmap_write(haptics->regmap, AW8624_REG_WAVSEQ1, wav_id);
 	if (ret)
-		return ret;
+		goto err_xfer;
 
 	ret = regmap_write(haptics->regmap, AW8624_REG_GO, AW8624_GO_ENABLE);
 	if (ret)
-		return ret;
+		goto err_xfer;
 
 	/* Let the 7-13ms impulse finish before allowing another I2C burst */
 	usleep_range(12000, 14000);
 	return 0;
+
+err_xfer:
+	if (ret == -ETIMEDOUT)
+		aw8624_notify_i2c_timeout(haptics);
+	return ret;
 }
 
 static int aw8624_start_cont(struct aw8624_data *haptics, u16 magnitude)
