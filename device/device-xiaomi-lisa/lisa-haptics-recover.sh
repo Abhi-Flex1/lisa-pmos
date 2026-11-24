@@ -1,20 +1,19 @@
 #!/bin/sh
 # Self-heal Qualcomm QUP I2C4 (990000.i2c) GPI DMA stalls for AW8624 haptics.
-# Triggered asynchronously by udev on HAPTICS_I2C_TIMEOUT=1 from aw8624.ko.
+# Triggered via systemd-run from udev on HAPTICS_I2C_TIMEOUT=1 from aw8624.ko.
 LOCK="/run/lisa-haptics-recover.lock"
 [ -e "$LOCK" ] && exit 0
 touch "$LOCK"
-(
-	trap 'rm -f "$LOCK"' EXIT
-	if [ -w /sys/bus/platform/drivers/geni_i2c/unbind ]; then
-		echo 990000.i2c > /sys/bus/platform/drivers/geni_i2c/unbind 2>/dev/null || true
-		sleep 0.2
-		echo 990000.i2c > /sys/bus/platform/drivers/geni_i2c/bind 2>/dev/null || true
-		sleep 0.3
-		[ -w /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control ] && \
-			echo on > /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control 2>/dev/null || true
-		# Let feedbackd re-open the fresh aw8624_haptic event node on next D-Bus call
-		pkill feedbackd 2>/dev/null || true
-	fi
-) >/dev/null 2>&1 &
+trap 'rm -f "$LOCK"' EXIT
+
+if [ -w /sys/bus/platform/drivers/geni_i2c/unbind ]; then
+	echo 990000.i2c > /sys/bus/platform/drivers/geni_i2c/unbind 2>/dev/null || true
+	sleep 0.2
+	echo 990000.i2c > /sys/bus/platform/drivers/geni_i2c/bind 2>/dev/null || true
+	sleep 0.3
+	[ -w /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control ] && \
+		echo on > /sys/devices/platform/soc@0/9c0000.geniqup/990000.i2c/power/control 2>/dev/null || true
+	# Let feedbackd re-open the fresh aw8624_haptic event node on next D-Bus call
+	pkill feedbackd 2>/dev/null || true
+fi
 exit 0

@@ -3,4 +3,4 @@ SUBSYSTEM=="input", KERNEL=="event*", ENV{ID_INPUT}=="1", SUBSYSTEMS=="input", A
 # Keep QUP I2C4 (990000.i2c, GPI DMA) out of runtime suspend
 ACTION=="add", SUBSYSTEM=="platform", KERNEL=="990000.i2c", ATTR{power/control}="on"
 # Auto-recover 990000.i2c if Qualcomm GPI DMA ever stalls with -ETIMEDOUT
-ACTION=="change", SUBSYSTEM=="i2c", KERNEL=="4-005a", ENV{HAPTICS_I2C_TIMEOUT}=="1", RUN+="/usr/libexec/lisa-haptics-recover.sh"
+ACTION=="change", SUBSYSTEM=="i2c", KERNEL=="4-005a", ENV{HAPTICS_I2C_TIMEOUT}=="1", RUN+="/usr/bin/systemd-run --no-block --collect /usr/libexec/lisa-haptics-recover.sh"
